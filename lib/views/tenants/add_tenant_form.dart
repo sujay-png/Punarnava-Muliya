@@ -1,4 +1,7 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../../controllers/tenant_controller.dart';
@@ -43,6 +46,7 @@ class _AddTenantViewState extends State<AddTenantView> {
   final _declarationDate = TextEditingController();
   final _roomNo = TextEditingController();
   final _monthlyRent = TextEditingController();
+  Uint8List? _profilePhotoBytes;
   String? _gender;
   String? _idProofType;
   DateTime _joinDate = DateTime.now();
@@ -115,7 +119,16 @@ class _AddTenantViewState extends State<AddTenantView> {
                   decoration: _cardDecoration,
                   child: Column(
                     children: [
-                      _sectionHeader(Icons.person, 'Basic Details'),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            child:
+                                _sectionHeader(Icons.person, 'Basic Details'),
+                          ),
+                          _photoUpload(),
+                        ],
+                      ),
                       const SizedBox(height: 15),
                       Row(
                         children: [
@@ -323,8 +336,7 @@ class _AddTenantViewState extends State<AddTenantView> {
                               ],
                               onChanged: (v) =>
                                   setState(() => _idProofType = v),
-                              validator: (v) =>
-                                  v == null ? 'Required' : null,
+                              validator: (v) => v == null ? 'Required' : null,
                             ),
                           ),
                           const SizedBox(width: 15),
@@ -944,6 +956,15 @@ class _AddTenantViewState extends State<AddTenantView> {
           ? _guardianPhone.text.trim()
           : _fatherPhone.text.trim();
 
+      DateTime? _parseDate(String text) {
+        if (text.trim().isEmpty) return null;
+        try {
+          return DateFormat('dd-MM-yyyy').parseStrict(text.trim());
+        } catch (_) {
+          return null;
+        }
+      }
+
       await context.read<TenantController>().addTenant(TenantModel(
             id: '',
             name: _name.text.trim(),
@@ -955,6 +976,30 @@ class _AddTenantViewState extends State<AddTenantView> {
             idNumber: _idNumber.text.trim(),
             emergencyContact: emergencyContact,
             status: 'active',
+            email: _email.text.trim(),
+            dob: _parseDate(_dob.text),
+            age: int.tryParse(_age.text.trim()),
+            permanentAddress: _address.text.trim(),
+            nationality: _nationality.text.trim(),
+            fatherName: _fatherName.text.trim(),
+            fatherPhone: _fatherPhone.text.trim(),
+            motherName: _motherName.text.trim(),
+            motherPhone: _motherPhone.text.trim(),
+            guardianName: _guardianName.text.trim(),
+            guardianPhone: _guardianPhone.text.trim(),
+            maritalStatus: _maritalStatus.text.trim(),
+            companyName: _companyName.text.trim(),
+            companyAddress: _companyAddress.text.trim(),
+            companyPhone: _companyPhone.text.trim(),
+            occupationStatus: _gender,
+            appointmentLetterRef: _appointmentLetter.text.trim(),
+            expectedStay: _expectedStay.text.trim(),
+            vehicleModel: _vehicleModel.text.trim(),
+            vehicleNumber: _vehicleNumber.text.trim(),
+            bloodGroup: _bloodGroup.text.trim(),
+            healthCondition: _healthCondition.text.trim(),
+            signature: _signature.text.trim(),
+            declarationDate: _parseDate(_declarationDate.text),
           ));
       if (mounted) {
         Navigator.pop(context);
@@ -973,7 +1018,7 @@ class _AddTenantViewState extends State<AddTenantView> {
     String? hintText,
     TextInputType? keyboardType,
     int maxLines = 1,
-    bool required = false,
+    bool required = true,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1092,6 +1137,86 @@ class _AddTenantViewState extends State<AddTenantView> {
               ? (value) =>
                   value == null || value.trim().isEmpty ? 'Required' : null
               : null,
+        ),
+      ],
+    );
+  }
+
+  Future<void> _pickPhoto() async {
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.image,
+        allowMultiple: false,
+        withData: true,
+      );
+
+      if (result == null) return;
+
+      final bytes = result.files.single.bytes;
+
+      if (bytes != null && mounted) {
+        setState(() => _profilePhotoBytes = bytes);
+      }
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Unable to select photo: $error')),
+        );
+      }
+    }
+  }
+
+  Widget _photoUpload() {
+    return Column(
+      children: [
+        InkWell(
+          borderRadius: BorderRadius.circular(12),
+          onTap: _pickPhoto,
+          child: Container(
+            height: 96,
+            width: 96,
+            decoration: BoxDecoration(
+              color: const Color(0xFF202B3D),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: const Color(0xFF60A5FA),
+                width: 1.2,
+              ),
+            ),
+            child: _profilePhotoBytes != null
+                ? ClipRRect(
+                    borderRadius: BorderRadius.circular(11),
+                    child: Image.memory(
+                      _profilePhotoBytes!,
+                      fit: BoxFit.cover,
+                    ),
+                  )
+                : const Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.add_a_photo_outlined,
+                        color: Color(0xFF60A5FA),
+                      ),
+                      SizedBox(height: 6),
+                      Text(
+                        'Upload photo',
+                        style: TextStyle(
+                          color: Color(0xFFF1F5F9),
+                          fontSize: 11,
+                        ),
+                      ),
+                    ],
+                  ),
+          ),
+        ),
+        const SizedBox(height: 6),
+        const Text(
+          'Passport-size photo',
+          style: TextStyle(
+            color: Color(0xFFB6C2D2),
+            fontSize: 11,
+          ),
         ),
       ],
     );

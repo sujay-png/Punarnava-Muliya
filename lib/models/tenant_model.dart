@@ -12,6 +12,32 @@ class TenantModel {
   final String emergencyContact;
   final String status; // active | notice | vacated
 
+  // ---- additional fields captured on the application form ----
+  final String? email;
+  final DateTime? dob;
+  final int? age;
+  final String? permanentAddress;
+  final String? nationality;
+  final String? fatherName;
+  final String? fatherPhone;
+  final String? motherName;
+  final String? motherPhone;
+  final String? guardianName;
+  final String? guardianPhone;
+  final String? maritalStatus;
+  final String? companyName;
+  final String? companyAddress;
+  final String? companyPhone;
+  final String? occupationStatus; // Student | Working Professional | Business Owner
+  final String? appointmentLetterRef;
+  final String? expectedStay;
+  final String? vehicleModel;
+  final String? vehicleNumber;
+  final String? bloodGroup;
+  final String? healthCondition;
+  final String? signature;
+  final DateTime? declarationDate;
+
   const TenantModel({
     required this.id,
     required this.name,
@@ -23,6 +49,30 @@ class TenantModel {
     required this.idNumber,
     required this.emergencyContact,
     required this.status,
+    this.email,
+    this.dob,
+    this.age,
+    this.permanentAddress,
+    this.nationality,
+    this.fatherName,
+    this.fatherPhone,
+    this.motherName,
+    this.motherPhone,
+    this.guardianName,
+    this.guardianPhone,
+    this.maritalStatus,
+    this.companyName,
+    this.companyAddress,
+    this.companyPhone,
+    this.occupationStatus,
+    this.appointmentLetterRef,
+    this.expectedStay,
+    this.vehicleModel,
+    this.vehicleNumber,
+    this.bloodGroup,
+    this.healthCondition,
+    this.signature,
+    this.declarationDate,
   });
 
   factory TenantModel.fromDoc(DocumentSnapshot doc) {
@@ -38,6 +88,30 @@ class TenantModel {
       idNumber: d['idNumber'] ?? '',
       emergencyContact: d['emergencyContact'] ?? '',
       status: d['status'] ?? 'active',
+      email: d['email'],
+      dob: (d['dob'] as Timestamp?)?.toDate(),
+      age: d['age'] as int?,
+      permanentAddress: d['permanentAddress'],
+      nationality: d['nationality'],
+      fatherName: d['fatherName'],
+      fatherPhone: d['fatherPhone'],
+      motherName: d['motherName'],
+      motherPhone: d['motherPhone'],
+      guardianName: d['guardianName'],
+      guardianPhone: d['guardianPhone'],
+      maritalStatus: d['maritalStatus'],
+      companyName: d['companyName'],
+      companyAddress: d['companyAddress'],
+      companyPhone: d['companyPhone'],
+      occupationStatus: d['occupationStatus'],
+      appointmentLetterRef: d['appointmentLetterRef'],
+      expectedStay: d['expectedStay'],
+      vehicleModel: d['vehicleModel'],
+      vehicleNumber: d['vehicleNumber'],
+      bloodGroup: d['bloodGroup'],
+      healthCondition: d['healthCondition'],
+      signature: d['signature'],
+      declarationDate: (d['declarationDate'] as Timestamp?)?.toDate(),
     );
   }
 
@@ -51,6 +125,32 @@ class TenantModel {
         'idNumber': idNumber,
         'emergencyContact': emergencyContact,
         'status': status,
+        'email': email,
+        'dob': dob != null ? Timestamp.fromDate(dob!) : null,
+        'age': age,
+        'permanentAddress': permanentAddress,
+        'nationality': nationality,
+        'fatherName': fatherName,
+        'fatherPhone': fatherPhone,
+        'motherName': motherName,
+        'motherPhone': motherPhone,
+        'guardianName': guardianName,
+        'guardianPhone': guardianPhone,
+        'maritalStatus': maritalStatus,
+        'companyName': companyName,
+        'companyAddress': companyAddress,
+        'companyPhone': companyPhone,
+        'occupationStatus': occupationStatus,
+        'appointmentLetterRef': appointmentLetterRef,
+        'expectedStay': expectedStay,
+        'vehicleModel': vehicleModel,
+        'vehicleNumber': vehicleNumber,
+        'bloodGroup': bloodGroup,
+        'healthCondition': healthCondition,
+        'signature': signature,
+        'declarationDate': declarationDate != null
+            ? Timestamp.fromDate(declarationDate!)
+            : null,
         'createdAt': FieldValue.serverTimestamp(),
       };
 }
