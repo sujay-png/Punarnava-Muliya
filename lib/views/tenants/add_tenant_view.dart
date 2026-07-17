@@ -50,18 +50,18 @@ class _AddTenantViewState extends State<AddTenantView> {
                 ),
               ),
               const SizedBox(width: 12),
-              Expanded(
-                child: DropdownButtonFormField<String>(
-                  initialValue: _gender,
-                  decoration: const InputDecoration(labelText: 'Gender'),
-                  items: const [
-                    DropdownMenuItem(value: 'male', child: Text('Male')),
-                    DropdownMenuItem(value: 'female', child: Text('Female')),
-                  ],
-                  onChanged: (v) => setState(() => _gender = v),
-                  validator: (v) => v == null ? 'Required' : null,
-                ),
-              ),
+              // Expanded(
+              //   child: DropdownButtonFormField<String>(
+              //     initialValue: _gender,
+              //     decoration: const InputDecoration(labelText: 'Gender'),
+              //     items: const [
+              //       DropdownMenuItem(value: 'male', child: Text('Male')),
+              //       DropdownMenuItem(value: 'female', child: Text('Female')),
+              //     ],
+              //     onChanged: (v) => setState(() => _gender = v),
+              //     validator: (v) => v == null ? 'Required' : null,
+              //   ),
+              // ),
             ]),
             const SizedBox(height: 12),
             TextFormField(
@@ -69,10 +69,10 @@ class _AddTenantViewState extends State<AddTenantView> {
               decoration: const InputDecoration(
                   labelText: 'Phone (10-digit, WhatsApp number)'),
               keyboardType: TextInputType.phone,
-              validator: (v) => (v == null ||
-                      v.replaceAll(RegExp(r'\D'), '').length != 10)
-                  ? 'Enter a 10-digit mobile number'
-                  : null,
+              validator: (v) =>
+                  (v == null || v.replaceAll(RegExp(r'\D'), '').length != 10)
+                      ? 'Enter a 10-digit mobile number'
+                      : null,
             ),
             const SizedBox(height: 12),
             Row(children: [
@@ -108,14 +108,15 @@ class _AddTenantViewState extends State<AddTenantView> {
               Expanded(
                 child: DropdownButtonFormField<String>(
                   initialValue: _idProofType,
-                  decoration:
-                      const InputDecoration(labelText: 'ID proof type'),
+                  decoration: const InputDecoration(labelText: 'ID proof type'),
                   items: const [
                     DropdownMenuItem(value: 'aadhaar', child: Text('Aadhaar')),
                     DropdownMenuItem(value: 'pan', child: Text('PAN')),
                     DropdownMenuItem(
-                        value: 'driving_license', child: Text('Driving license')),
-                    DropdownMenuItem(value: 'passport', child: Text('Passport')),
+                        value: 'driving_license',
+                        child: Text('Driving license')),
+                    DropdownMenuItem(
+                        value: 'passport', child: Text('Passport')),
                   ],
                   onChanged: (v) => setState(() => _idProofType = v),
                   validator: (v) => v == null ? 'Required' : null,
@@ -162,7 +163,7 @@ class _AddTenantViewState extends State<AddTenantView> {
             name: _name.text.trim(),
             roomNo: _room.text.trim().toUpperCase(),
             phone: _phone.text.replaceAll(RegExp(r'\D'), ''),
-            gender: _gender!,
+          
             joinDate: _joinDate,
             monthlyRent: int.parse(_rent.text),
             idProofType: _idProofType!,
@@ -172,8 +173,8 @@ class _AddTenantViewState extends State<AddTenantView> {
           ));
       if (mounted) {
         Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Tenant registered')));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(const SnackBar(content: Text('Tenant registered')));
       }
     } finally {
       if (mounted) setState(() => _saving = false);

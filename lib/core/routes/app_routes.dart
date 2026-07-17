@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../views/auth/login_view.dart';
 import '../../views/dashboard/home_shell.dart';
-import '../../views/tenants/add_tenant_view.dart';
+import '../../views/tenants/add_tenant_form.dart';
 
 class AppRoutes {
   static const login = '/login';

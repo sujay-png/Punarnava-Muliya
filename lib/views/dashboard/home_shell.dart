@@ -19,7 +19,8 @@ class HomeShell extends StatefulWidget {
 
 class _HomeShellState extends State<HomeShell> {
   int _index = 0;
-
+  final double _mobileBreakpoint = 600;
+  bool _isexpanded = false;
   static const _pages = [
     DashboardView(),
     TenantsView(),
@@ -45,20 +46,93 @@ class _HomeShellState extends State<HomeShell> {
           ),
         ],
       ),
-      body: _pages[_index],
-      bottomNavigationBar: NavigationBar(
+      body: LayoutBuilder(
+  builder: (context, constraints) {
+    final isMobileLayout = constraints.maxWidth < _mobileBreakpoint;
+
+    if (isMobileLayout) {
+      return _pages[_index];
+    }
+
+    return Row(
+      children: [
+        MouseRegion(
+          onEnter: (_) => setState(() => _isexpanded = true),
+          onExit: (_) => setState(() => _isexpanded = false),
+          child: NavigationRail(
+            extended:_isexpanded,
+            minWidth: 72,
+            minExtendedWidth: 200,
+            selectedIndex: _index,
+            onDestinationSelected: (i) => setState(() => _index = i),
+            labelType: NavigationRailLabelType.none,
+            backgroundColor: AppColors.surface,
+            indicatorColor: AppColors.accent.withValues(alpha: 0.2),
+            destinations: const [
+              NavigationRailDestination(
+                icon: Icon(Icons.dashboard_outlined),
+                selectedIcon: Icon(Icons.dashboard),
+                label: Text('Dashboard'),
+              ),
+              NavigationRailDestination(
+                icon: Icon(Icons.people_outline),
+                selectedIcon: Icon(Icons.people),
+                label: Text('Tenants'),
+              ),
+              NavigationRailDestination(
+                icon: Icon(Icons.payments_outlined),
+                selectedIcon: Icon(Icons.payments),
+                label: Text('Fees'),
+              ),
+              NavigationRailDestination(
+                icon: Icon(Icons.build_outlined),
+                selectedIcon: Icon(Icons.build),
+                label: Text('Maintenance'),
+              ),
+              NavigationRailDestination(
+                icon: Icon(Icons.campaign_outlined),
+                selectedIcon: Icon(Icons.campaign),
+                label: Text('Notices'),
+              ),
+            ],
+          ),
+        ),
+        const VerticalDivider(width: 1),
+        Expanded(child: _pages[_index]),
+      ],
+    );
+  },
+),
+bottomNavigationBar: MediaQuery.sizeOf(context).width < _mobileBreakpoint
+    ? NavigationBar(
         selectedIndex: _index,
         onDestinationSelected: (i) => setState(() => _index = i),
         backgroundColor: AppColors.surface,
         indicatorColor: AppColors.accent.withValues(alpha: 0.2),
         destinations: const [
-          NavigationDestination(icon: Icon(Icons.dashboard_outlined), label: 'Dashboard'),
-          NavigationDestination(icon: Icon(Icons.people_outline), label: 'Tenants'),
-          NavigationDestination(icon: Icon(Icons.payments_outlined), label: 'Fees'),
-          NavigationDestination(icon: Icon(Icons.build_outlined), label: 'Maintenance'),
-          NavigationDestination(icon: Icon(Icons.campaign_outlined), label: 'Notices'),
+          NavigationDestination(
+            icon: Icon(Icons.dashboard_outlined),
+            label: 'Dashboard',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.people_outline),
+            label: 'Tenants',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.payments_outlined),
+            label: 'Fees',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.build_outlined),
+            label: 'Maintenance',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.campaign_outlined),
+            label: 'Notices',
+          ),
         ],
-      ),
+      )
+    : null,
     );
   }
 }

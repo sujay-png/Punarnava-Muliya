@@ -5,7 +5,6 @@ class TenantModel {
   final String name;
   final String roomNo;
   final String phone; // 10-digit; country code added by Cloud Function
-  final String gender;
   final DateTime joinDate;
   final int monthlyRent;
   final String idProofType;
@@ -18,7 +17,6 @@ class TenantModel {
     required this.name,
     required this.roomNo,
     required this.phone,
-    required this.gender,
     required this.joinDate,
     required this.monthlyRent,
     required this.idProofType,
@@ -34,7 +32,6 @@ class TenantModel {
       name: d['name'] ?? '',
       roomNo: d['roomNo'] ?? '',
       phone: d['phone'] ?? '',
-      gender: d['gender'] ?? '',
       joinDate: (d['joinDate'] as Timestamp?)?.toDate() ?? DateTime.now(),
       monthlyRent: (d['monthlyRent'] ?? 0) as int,
       idProofType: d['idProofType'] ?? '',
@@ -48,7 +45,6 @@ class TenantModel {
         'name': name,
         'roomNo': roomNo,
         'phone': phone,
-        'gender': gender,
         'joinDate': Timestamp.fromDate(joinDate),
         'monthlyRent': monthlyRent,
         'idProofType': idProofType,
