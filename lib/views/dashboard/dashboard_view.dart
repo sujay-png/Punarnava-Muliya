@@ -85,10 +85,10 @@ class DashboardView extends StatelessWidget {
                   '${ReminderConfig.reminderDays.join(", ")} of every month.',
                 ),
                 const SizedBox(height: 8),
-                Text(
+                const Text(
                   'Members paying before the 5th get code '
                   '${ReminderConfig.earlyBirdCoupon} for 10% off.',
-                  style: const TextStyle(color: AppColors.accent),
+                  style: TextStyle(color: AppColors.accent),
                 ),
               ],
             ),
