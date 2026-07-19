@@ -43,9 +43,36 @@ class TenantsView extends StatelessWidget {
                       final t = controller.tenants[i];
                       return Card(
                         child: ListTile(
-                          title: Text(t.name,
-                              style:
-                                  const TextStyle(fontWeight: FontWeight.w700)),
+                          title: Row(
+                            children: [
+                              CircleAvatar(
+                                radius: 20,
+                                backgroundImage:
+                                    t.photourl != null && t.photourl!.isNotEmpty
+                                        ? NetworkImage(t.photourl!)
+                                        : null,
+                                child:
+                                    (t.photourl == null || t.photourl!.isEmpty)
+                                        ? Text(
+                                            t.name.isNotEmpty
+                                                ? t.name[0].toUpperCase()
+                                                : '?',
+                                            style: const TextStyle(
+                                                fontWeight: FontWeight.w600,
+                                                fontSize: 20),
+                                          )
+                                        : null,
+                              ),
+                              const SizedBox(width: 15),
+                              Expanded(
+                                child: Text(
+                                  t.name,
+                                  style: const TextStyle(
+                                      fontWeight: FontWeight.w600),
+                                ),
+                              ),
+                            ],
+                          ),
                           subtitle: Padding(
                             padding: const EdgeInsets.only(top: 4),
                             child: Row(children: [
