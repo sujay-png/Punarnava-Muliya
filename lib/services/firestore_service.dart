@@ -1,5 +1,8 @@
+import 'dart:io';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 
 import '../core/constants/app_constants.dart';
 import '../models/maintenance_model.dart';
@@ -9,6 +12,7 @@ import '../models/tenant_model.dart';
 
 /// Single data-access layer. Controllers call this; views never touch Firestore.
 class FirestoreService {
+   final _storage = FirebaseStorage.instance;
   final FirebaseFirestore _db = FirebaseFirestore.instance;
   final FirebaseFunctions _functions =
       FirebaseFunctions.instanceFor(region: 'asia-south1');
@@ -87,5 +91,13 @@ class FirestoreService {
       'orderLink': orderLink,
     });
     return (result.data['sentTo'] ?? 0) as int;
+  }
+
+
+  //upload tenant image
+    Future<String> uploadTenantPhoto(File imageFile, String tenantIdOrTemp) async {
+    final ref = _storage.ref().child('tenant_photos/$tenantIdOrTemp.jpg');
+    final uploadTask = await ref.putFile(imageFile);
+    return await uploadTask.ref.getDownloadURL();
   }
 }

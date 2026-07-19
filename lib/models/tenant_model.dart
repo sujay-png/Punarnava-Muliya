@@ -10,7 +10,8 @@ class TenantModel {
   final String idProofType;
   final String idNumber;
   final String emergencyContact;
-  final String status; // active | notice | vacated
+  final String status;
+  final String? photourl; // active | notice | vacated
 
   // ---- additional fields captured on the application form ----
   final String? email;
@@ -37,6 +38,7 @@ class TenantModel {
   final String? healthCondition;
   final String? signature;
   final DateTime? declarationDate;
+  // final String? photourl;
 
   const TenantModel({
     required this.id,
@@ -73,6 +75,7 @@ class TenantModel {
     this.healthCondition,
     this.signature,
     this.declarationDate,
+    this.photourl,
   });
 
   factory TenantModel.fromDoc(DocumentSnapshot doc) {
@@ -112,6 +115,7 @@ class TenantModel {
       healthCondition: d['healthCondition'],
       signature: d['signature'],
       declarationDate: (d['declarationDate'] as Timestamp?)?.toDate(),
+      photourl: d['photoUrl'],
     );
   }
 
@@ -148,6 +152,7 @@ class TenantModel {
         'bloodGroup': bloodGroup,
         'healthCondition': healthCondition,
         'signature': signature,
+         'photoUrl': photourl,
         'declarationDate': declarationDate != null
             ? Timestamp.fromDate(declarationDate!)
             : null,
