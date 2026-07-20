@@ -33,7 +33,7 @@ class _LoginViewState extends State<LoginView> {
                   const Icon(Icons.home_rounded,
                       color: AppColors.accent, size: 48),
                   const SizedBox(height: 12),
-                  const Text('PGMASTER',
+                  const Text('Punarnava muliya',
                       textAlign: TextAlign.center,
                       style: TextStyle(
                           fontSize: 24, fontWeight: FontWeight.w800)),
