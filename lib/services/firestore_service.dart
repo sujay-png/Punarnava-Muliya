@@ -1,9 +1,9 @@
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_storage/firebase_storage.dart';
-
 import '../core/constants/app_constants.dart';
 import '../models/maintenance_model.dart';
 import '../models/notice_model.dart';
@@ -14,8 +14,7 @@ import '../models/tenant_model.dart';
 class FirestoreService {
    final _storage = FirebaseStorage.instance;
   final FirebaseFirestore _db = FirebaseFirestore.instance;
-  final FirebaseFunctions _functions =
-      FirebaseFunctions.instanceFor(region: 'asia-south1');
+  final FirebaseFunctions _functions =FirebaseFunctions.instanceFor(region: 'asia-south1');
 
   // ---------- Tenants ----------
   Stream<List<TenantModel>> watchTenants() => _db
@@ -24,8 +23,13 @@ class FirestoreService {
       .snapshots()
       .map((s) => s.docs.map(TenantModel.fromDoc).toList());
 
-  Future<void> addTenant(TenantModel tenant) =>
-      _db.collection(FirestoreCollections.tenants).add(tenant.toMap());
+ Future<void> addTenant(TenantModel tenant, {String? photoUrl}) {
+  final data = tenant.toMap();
+  if (photoUrl != null) {
+    data['photoUrl'] = photoUrl;
+  }
+  return _db.collection(FirestoreCollections.tenants).add(data);
+}
 
   Future<void> updateTenantStatus(String tenantId, String status) => _db
       .collection(FirestoreCollections.tenants)
@@ -95,9 +99,15 @@ class FirestoreService {
 
 
   //upload tenant image
-    Future<String> uploadTenantPhoto(File imageFile, String tenantIdOrTemp) async {
-    final ref = _storage.ref().child('tenant_photos/$tenantIdOrTemp.jpg');
-    final uploadTask = await ref.putFile(imageFile);
-    return await uploadTask.ref.getDownloadURL();
-  }
+ Future<String> uploadTenantPhotoBytes(
+  Uint8List bytes,
+  String tenantIdOrTemp,
+) async {
+  final ref = _storage.ref().child('tenant_photos/$tenantIdOrTemp.jpg');
+  final uploadTask = await ref.putData(
+    bytes,
+    SettableMetadata(contentType: 'image/jpeg'),
+  );
+  return await uploadTask.ref.getDownloadURL();
+}
 }

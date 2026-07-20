@@ -34,10 +34,21 @@ class TenantController extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> addTenant(TenantModel tenant) => _service.addTenant(tenant);
+Future<void> addTenant(TenantModel tenant, {Uint8List? photoBytes}) async {
+  String? photoUrl;
 
+  if (photoBytes != null) {
+    final tempId = DateTime.now().millisecondsSinceEpoch.toString();
+    photoUrl = await _service.uploadTenantPhotoBytes(photoBytes, tempId);
+  }
+
+  await _service.addTenant(tenant, photoUrl: photoUrl);
+  notifyListeners();
+}
   Future<void> setStatus(String tenantId, String status) =>
       _service.updateTenantStatus(tenantId, status);
+      Future<String> uploadTenantPhoto(Uint8List bytes, String tempId) =>
+    _service.uploadTenantPhotoBytes(bytes, tempId);
 
   @override
   void dispose() {

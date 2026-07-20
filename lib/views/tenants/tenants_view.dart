@@ -1,3 +1,4 @@
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
@@ -45,24 +46,7 @@ class TenantsView extends StatelessWidget {
                         child: ListTile(
                           title: Row(
                             children: [
-                              CircleAvatar(
-                                radius: 20,
-                                backgroundImage:
-                                    t.photourl != null && t.photourl!.isNotEmpty
-                                        ? NetworkImage(t.photourl!)
-                                        : null,
-                                child:
-                                    (t.photourl == null || t.photourl!.isEmpty)
-                                        ? Text(
-                                            t.name.isNotEmpty
-                                                ? t.name[0].toUpperCase()
-                                                : '?',
-                                            style: const TextStyle(
-                                                fontWeight: FontWeight.w600,
-                                                fontSize: 20),
-                                          )
-                                        : null,
-                              ),
+                        tenantAvatar(t),
                               const SizedBox(width: 15),
                               Expanded(
                                 child: Text(
@@ -131,4 +115,39 @@ class TenantsView extends StatelessWidget {
       ),
     );
   }
+
+  Widget tenantAvatar(t) {
+  final photoPath = t.photourl;
+
+  Widget fallbackAvatar() {
+    return CircleAvatar(
+      radius: 20,
+      child: Text(
+        t.name.isNotEmpty ? t.name[0].toUpperCase() : '?',
+        style: const TextStyle(
+          fontWeight: FontWeight.w600,
+          fontSize: 20,
+        ),
+      ),
+    );
+  }
+
+  if (photoPath == null || photoPath.trim().isEmpty) {
+    return fallbackAvatar();
+  }
+
+  return FutureBuilder<String>(
+    future: FirebaseStorage.instance.ref(photoPath).getDownloadURL(),
+    builder: (context, snapshot) {
+      if (!snapshot.hasData) {
+        return fallbackAvatar();
+      }
+
+      return CircleAvatar(
+        radius: 20,
+        backgroundImage: NetworkImage(snapshot.data!),
+      );
+    },
+  );
+}
 }

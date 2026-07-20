@@ -25,7 +25,7 @@ class PgMasterApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => NoticeController()),
       ],
       child: MaterialApp(
-        title: 'PGMaster',
+        title: 'Punarnava muliya',
         debugShowCheckedModeBanner: false,
         theme: AppTheme.dark,
         routes: AppRoutes.routes,

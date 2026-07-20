@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:intl/intl.dart';
+import 'package:pgmaster/services/firestore_service.dart';
 import 'package:provider/provider.dart';
 import '../../controllers/tenant_controller.dart';
 import '../../models/tenant_model.dart';
@@ -15,6 +16,7 @@ class AddTenantView extends StatefulWidget {
 }
 
 class _AddTenantViewState extends State<AddTenantView> {
+  final _db=FirestoreService();
   final _formKey = GlobalKey<FormState>();
   final _name = TextEditingController();
   final _address = TextEditingController();
@@ -948,68 +950,83 @@ class _AddTenantViewState extends State<AddTenantView> {
     );
   }
 
-  Future<void> _save() async {
-    if (!_formKey.currentState!.validate()) return;
-    setState(() => _saving = true);
-    try {
-      final emergencyContact = _guardianPhone.text.trim().isNotEmpty
-          ? _guardianPhone.text.trim()
-          : _fatherPhone.text.trim();
+ Future<void> _save() async {
+  if (!_formKey.currentState!.validate()) return;
+  setState(() => _saving = true);
+  try {
+    final emergencyContact = _guardianPhone.text.trim().isNotEmpty
+        ? _guardianPhone.text.trim()
+        : _fatherPhone.text.trim();
 
-      DateTime? _parseDate(String text) {
-        if (text.trim().isEmpty) return null;
-        try {
-          return DateFormat('dd-MM-yyyy').parseStrict(text.trim());
-        } catch (_) {
-          return null;
-        }
+    DateTime? _parseDate(String text) {
+      if (text.trim().isEmpty) return null;
+      try {
+        return DateFormat('dd-MM-yyyy').parseStrict(text.trim());
+      } catch (_) {
+        return null;
       }
-
-      await context.read<TenantController>().addTenant(TenantModel(
-            id: '',
-            name: _name.text.trim(),
-            roomNo: _roomNo.text.trim().toUpperCase(),
-            phone: _phone.text.replaceAll(RegExp(r'\D'), ''),
-            joinDate: _joinDate,
-            monthlyRent: int.tryParse(_monthlyRent.text.trim()) ?? 0,
-            idProofType: _idProofType!,
-            idNumber: _idNumber.text.trim(),
-            emergencyContact: emergencyContact,
-            status: 'active',
-            email: _email.text.trim(),
-            dob: _parseDate(_dob.text),
-            age: int.tryParse(_age.text.trim()),
-            permanentAddress: _address.text.trim(),
-            nationality: _nationality.text.trim(),
-            fatherName: _fatherName.text.trim(),
-            fatherPhone: _fatherPhone.text.trim(),
-            motherName: _motherName.text.trim(),
-            motherPhone: _motherPhone.text.trim(),
-            guardianName: _guardianName.text.trim(),
-            guardianPhone: _guardianPhone.text.trim(),
-            maritalStatus: _maritalStatus.text.trim(),
-            companyName: _companyName.text.trim(),
-            companyAddress: _companyAddress.text.trim(),
-            companyPhone: _companyPhone.text.trim(),
-            occupationStatus: _gender,
-            appointmentLetterRef: _appointmentLetter.text.trim(),
-            expectedStay: _expectedStay.text.trim(),
-            vehicleModel: _vehicleModel.text.trim(),
-            vehicleNumber: _vehicleNumber.text.trim(),
-            bloodGroup: _bloodGroup.text.trim(),
-            healthCondition: _healthCondition.text.trim(),
-            signature: _signature.text.trim(),
-            declarationDate: _parseDate(_declarationDate.text),
-          ));
-      if (mounted) {
-        Navigator.pop(context);
-        ScaffoldMessenger.of(context)
-            .showSnackBar(const SnackBar(content: Text('Tenant registered')));
-      }
-    } finally {
-      if (mounted) setState(() => _saving = false);
     }
+
+    // upload photo first, if one was picked
+    String? photoUrl;
+    if (_profilePhotoBytes != null) {
+      final tempId = DateTime.now().millisecondsSinceEpoch.toString();
+      photoUrl = await context
+          .read<TenantController>()
+          .uploadTenantPhoto(_profilePhotoBytes!, tempId);
+    }
+
+    await context.read<TenantController>().addTenant(TenantModel(
+          id: '',
+          name: _name.text.trim(),
+          roomNo: _roomNo.text.trim().toUpperCase(),
+          phone: _phone.text.replaceAll(RegExp(r'\D'), ''),
+          joinDate: _joinDate,
+          monthlyRent: int.tryParse(_monthlyRent.text.trim()) ?? 0,
+          idProofType: _idProofType!,
+          idNumber: _idNumber.text.trim(),
+          emergencyContact: emergencyContact,
+          status: 'active',
+          email: _email.text.trim(),
+          dob: _parseDate(_dob.text),
+          age: int.tryParse(_age.text.trim()),
+          permanentAddress: _address.text.trim(),
+          nationality: _nationality.text.trim(),
+          fatherName: _fatherName.text.trim(),
+          fatherPhone: _fatherPhone.text.trim(),
+          motherName: _motherName.text.trim(),
+          motherPhone: _motherPhone.text.trim(),
+          guardianName: _guardianName.text.trim(),
+          guardianPhone: _guardianPhone.text.trim(),
+          maritalStatus: _maritalStatus.text.trim(),
+          companyName: _companyName.text.trim(),
+          companyAddress: _companyAddress.text.trim(),
+          companyPhone: _companyPhone.text.trim(),
+          occupationStatus: _gender,
+          appointmentLetterRef: _appointmentLetter.text.trim(),
+          expectedStay: _expectedStay.text.trim(),
+          vehicleModel: _vehicleModel.text.trim(),
+          vehicleNumber: _vehicleNumber.text.trim(),
+          bloodGroup: _bloodGroup.text.trim(),
+          healthCondition: _healthCondition.text.trim(),
+          signature: _signature.text.trim(),
+          photourl: photoUrl, 
+          declarationDate: _parseDate(_declarationDate.text),
+        ));
+        
+       
+    if (mounted) {
+      Navigator.pop(context);
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('Tenant registered')));
+    }
+  } catch (e) {
+  debugPrint('Photo upload failed: $e');
   }
+  finally {
+    if (mounted) setState(() => _saving = false);
+  }
+}
 
   //============================ Helper methods ==========================
   Widget _formField(

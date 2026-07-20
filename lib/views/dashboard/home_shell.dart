@@ -36,7 +36,7 @@ class _HomeShellState extends State<HomeShell> {
         title: const Row(children: [
           Icon(Icons.home_rounded, color: AppColors.accent),
           SizedBox(width: 8),
-          Text('PGMASTER', style: TextStyle(fontWeight: FontWeight.w800)),
+          Text('Punarnava muliya', style: TextStyle(fontWeight: FontWeight.w800)),
         ]),
         actions: [
           IconButton(
