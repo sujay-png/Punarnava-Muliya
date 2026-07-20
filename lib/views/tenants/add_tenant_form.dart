@@ -102,10 +102,10 @@ class _AddTenantViewState extends State<AddTenantView> {
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
-            Center(
+            const Center(
               child: Text(
                 'Paying guest application form',
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 24,
                   fontWeight: FontWeight.w700,
                   color: Colors.white,
@@ -707,7 +707,7 @@ class _AddTenantViewState extends State<AddTenantView> {
                           );
 
                           final bloodGroup = DropdownButtonFormField<String>(
-                            value: _bloodGroup.text.isEmpty
+                            initialValue: _bloodGroup.text.isEmpty
                                 ? null
                                 : _bloodGroup.text,
                             style: const TextStyle(
@@ -958,7 +958,7 @@ class _AddTenantViewState extends State<AddTenantView> {
         ? _guardianPhone.text.trim()
         : _fatherPhone.text.trim();
 
-    DateTime? _parseDate(String text) {
+    DateTime? parseDate(String text) {
       if (text.trim().isEmpty) return null;
       try {
         return DateFormat('dd-MM-yyyy').parseStrict(text.trim());
@@ -988,7 +988,7 @@ class _AddTenantViewState extends State<AddTenantView> {
           emergencyContact: emergencyContact,
           status: 'active',
           email: _email.text.trim(),
-          dob: _parseDate(_dob.text),
+          dob: parseDate(_dob.text),
           age: int.tryParse(_age.text.trim()),
           permanentAddress: _address.text.trim(),
           nationality: _nationality.text.trim(),
@@ -1011,7 +1011,7 @@ class _AddTenantViewState extends State<AddTenantView> {
           healthCondition: _healthCondition.text.trim(),
           signature: _signature.text.trim(),
           photourl: photoUrl, 
-          declarationDate: _parseDate(_declarationDate.text),
+          declarationDate: parseDate(_declarationDate.text),
         ));
         
        

@@ -15,7 +15,6 @@ class Msg91Service {
   constructor() {
     this.authKey = process.env.MSG91_AUTH_KEY;
     this.integratedNumber = process.env.MSG91_INTEGRATED_NUMBER;
-    this.namespace = process.env.MSG91_TEMPLATE_NAMESPACE;
   }
 
   ensureConfigured() {
@@ -41,7 +40,6 @@ class Msg91Service {
         template: {
           name: templateName,
           language: { code: languageCode, policy: "deterministic" },
-          namespace: this.namespace,
           to_and_components: recipients.map((r) => ({
             to: [r.to],
             components: r.components,

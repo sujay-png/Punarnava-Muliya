@@ -18,13 +18,33 @@ const {
   EARLY_BIRD_DISCOUNT_PERCENT, TIMEZONE,
 } = require("../config/constants");
 
+
+
+/** Per-tenant UPI deep link, amount pre-filled. Opens GPay/PhonePe/Paytm on tap. */
+function buildUpiLink(tenant, ctx) {
+  // Pre-apply the 10% early-bird discount in the link before the 5th:
+  const amount = ctx.earlyBird
+    ? Math.round(tenant.monthlyRent * (1 - EARLY_BIRD_DISCOUNT_PERCENT / 100))
+    : tenant.monthlyRent;
+
+  const params = new URLSearchParams({
+    pa: process.env.UPI_ID,                       // gcmulia@kbl
+    pn: process.env.UPI_PAYEE_NAME || "PG Rent",
+    am: String(amount),
+    cu: "INR",
+    tn: `Rent ${monthLabel(ctx.date)} ${tenant.roomNo || ""}`.trim(),
+  });
+  return `upi://pay?${params.toString()}`;
+}
+
+
 /** Build the template variables for one tenant. Order must match {{1}}..{{n}}. */
 function buildComponents(tenant, ctx) {
   const base = {
     body_1: { type: "text", value: tenant.name },                    // {{1}} name
     body_2: { type: "text", value: monthLabel(ctx.date) },           // {{2}} month
     body_3: { type: "text", value: `₹${tenant.monthlyRent}` },       // {{3}} amount
-    body_4: { type: "text", value: process.env.PAYMENT_LINK || "" }, // {{4}} pay link
+body_4: { type: "text", value: buildUpiLink(tenant, ctx) },      // {{4}} UPI link
   };
   if (ctx.earlyBird) {
     base.body_5 = { type: "text", value: EARLY_BIRD_COUPON };                 // {{5}}
