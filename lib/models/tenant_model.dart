@@ -4,7 +4,7 @@ class TenantModel {
   final String id;
   final String name;
   final String roomNo;
-  final String phone; // 10-digit; country code added by Cloud Function
+  final String phone; 
   final DateTime joinDate;
   final int monthlyRent;
   final String idProofType;

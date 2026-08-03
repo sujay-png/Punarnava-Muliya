@@ -45,6 +45,14 @@ Future<void> addTenant(TenantModel tenant, {Uint8List? photoBytes}) async {
   await _service.addTenant(tenant, photoUrl: photoUrl);
   notifyListeners();
 }
+
+Future<void> updateTenantRent(String tenantId, int newRent) async {
+  await _service.updateTenantRent(tenantId, newRent);
+  // No need to manually update _tenants — your watchTenants() stream
+  // will push the updated value automatically since it's a live listener.
+}
+
+
   Future<void> setStatus(String tenantId, String status) =>
       _service.updateTenantStatus(tenantId, status);
       Future<String> uploadTenantPhoto(Uint8List bytes, String tempId) =>

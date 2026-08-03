@@ -30,6 +30,17 @@ class FirestoreService {
   return _db.collection(FirestoreCollections.tenants).add(data);
 }
 
+
+
+// Add this method to your FirestoreService class
+Future<void> updateTenantRent(String tenantId, int newRent) async {
+  await FirebaseFirestore.instance
+      .collection('tenants')
+      .doc(tenantId)
+      .update({'monthlyRent': newRent});
+}
+
+
   Future<void> updateTenantStatus(String tenantId, String status) => _db
       .collection(FirestoreCollections.tenants)
       .doc(tenantId)

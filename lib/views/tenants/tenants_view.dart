@@ -70,18 +70,28 @@ class TenantsView extends StatelessWidget {
                               ),
                             ]),
                           ),
-                          trailing: Column(
-                            crossAxisAlignment: CrossAxisAlignment.end,
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Text(t.roomNo,
-                                  style: const TextStyle(
-                                      color: AppColors.accent,
-                                      fontWeight: FontWeight.w700)),
-                              Text('₹${t.monthlyRent}/mo',
-                                  style: const TextStyle(fontSize: 12)),
-                            ],
-                          ),
+trailing: Row(
+  mainAxisSize: MainAxisSize.min,
+  children: [
+    Column(
+      crossAxisAlignment: CrossAxisAlignment.end,
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Text(t.roomNo,
+            style: const TextStyle(
+                color: AppColors.accent,
+                fontWeight: FontWeight.w700)),
+        Text('₹${t.monthlyRent}/mo',
+            style: const TextStyle(fontSize: 12)),
+      ],
+    ),
+    IconButton(
+      icon: const Icon(Icons.edit, size: 18, color: AppColors.textSecondary),
+      onPressed: () => _showEditFeeDialog(context, t.id, t.monthlyRent),
+      tooltip: 'Edit fee',
+    ),
+  ],
+),
                           onLongPress: () => _showStatusSheet(context, t.id),
                         ),
                       );
@@ -115,6 +125,80 @@ class TenantsView extends StatelessWidget {
       ),
     );
   }
+
+
+  void _showEditFeeDialog(BuildContext context, String tenantId, int currentRent) {
+  final controller = context.read<TenantController>();
+  final rentController = TextEditingController(text: currentRent.toString());
+  final formKey = GlobalKey<FormState>();
+  bool saving = false;
+
+  showDialog(
+    context: context,
+    builder: (dialogContext) => StatefulBuilder(
+      builder: (dialogContext, setDialogState) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        title: const Text('Edit Monthly Fee'),
+        content: Form(
+          key: formKey,
+          child: TextFormField(
+            controller: rentController,
+            autofocus: true,
+            keyboardType: TextInputType.number,
+            style: const TextStyle(color: Colors.white),
+            decoration: const InputDecoration(
+              labelText: 'Monthly Rent (₹)',
+              prefixText: '₹ ',
+            ),
+            validator: (v) {
+              final parsed = int.tryParse(v ?? '');
+              if (parsed == null || parsed <= 0) return 'Enter a valid amount';
+              return null;
+            },
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: saving ? null : () => Navigator.pop(dialogContext),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: saving
+                ? null
+                : () async {
+                    if (!formKey.currentState!.validate()) return;
+                    setDialogState(() => saving = true);
+                    try {
+                      final newRent = int.parse(rentController.text.trim());
+                      await controller.updateTenantRent(tenantId, newRent);
+                      if (dialogContext.mounted) {
+                        Navigator.pop(dialogContext);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Fee updated')),
+                        );
+                      }
+                    } catch (e) {
+                      setDialogState(() => saving = false);
+                      if (dialogContext.mounted) {
+                        ScaffoldMessenger.of(dialogContext).showSnackBar(
+                          SnackBar(content: Text('Failed to update: $e')),
+                        );
+                      }
+                    }
+                  },
+            child: saving
+                ? const SizedBox(
+                    height: 16,
+                    width: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                  )
+                : const Text('Save'),
+          ),
+        ],
+      ),
+    ),
+  );
+}
 
   Widget tenantAvatar(t) {
   final photoPath = t.photourl;

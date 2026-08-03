@@ -44,7 +44,7 @@ function buildComponents(tenant, ctx) {
     body_1: { type: "text", value: tenant.name },                    // {{1}} name
     body_2: { type: "text", value: monthLabel(ctx.date) },           // {{2}} month
     body_3: { type: "text", value: `₹${tenant.monthlyRent}` },       // {{3}} amount
-body_4: { type: "text", value: buildUpiLink(tenant, ctx) },      // {{4}} UPI link
+    body_4: { type: "text", value: buildUpiLink(tenant, ctx) },      // {{4}} UPI link
   };
   if (ctx.earlyBird) {
     base.body_5 = { type: "text", value: EARLY_BIRD_COUPON };                 // {{5}}
