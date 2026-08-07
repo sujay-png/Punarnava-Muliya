@@ -1,5 +1,8 @@
 import 'dart:async';
+import 'dart:typed_data';
+
 import 'package:flutter/foundation.dart';
+
 import '../models/tenant_model.dart';
 import '../services/firestore_service.dart';
 
@@ -18,8 +21,11 @@ class TenantController extends ChangeNotifier {
               t.name.toLowerCase().contains(_search) ||
               t.roomNo.toLowerCase().contains(_search))
           .toList();
+
   bool get loading => _loading;
-  int get activeCount => _tenants.where((t) => t.status != 'vacated').length;
+
+  int get activeCount =>
+      _tenants.where((t) => t.status != 'vacated').length;
 
   TenantController() {
     _sub = _service.watchTenants().listen((list) {
@@ -34,29 +40,58 @@ class TenantController extends ChangeNotifier {
     notifyListeners();
   }
 
-Future<void> addTenant(TenantModel tenant, {Uint8List? photoBytes}) async {
-  String? photoUrl;
+  Future<void> addTenant(
+    TenantModel tenant, {
+    Uint8List? photoBytes,
+  }) async {
+    String? photoUrl;
 
-  if (photoBytes != null) {
-    final tempId = DateTime.now().millisecondsSinceEpoch.toString();
-    photoUrl = await _service.uploadTenantPhotoBytes(photoBytes, tempId);
+    if (photoBytes != null) {
+      final tempId = DateTime.now().millisecondsSinceEpoch.toString();
+      photoUrl =
+          await _service.uploadTenantPhotoBytes(photoBytes, tempId);
+    }
+
+    await _service.addTenant(tenant, photoUrl: photoUrl);
+    notifyListeners();
   }
 
-  await _service.addTenant(tenant, photoUrl: photoUrl);
-  notifyListeners();
-}
+  Future<void> updateTenant(
+    TenantModel tenant, {
+    Uint8List? photoBytes,
+  }) async {
+    String? photoUrl = tenant.photourl;
 
-Future<void> updateTenantRent(String tenantId, int newRent) async {
-  await _service.updateTenantRent(tenantId, newRent);
-  // No need to manually update _tenants — your watchTenants() stream
-  // will push the updated value automatically since it's a live listener.
-}
+    if (photoBytes != null) {
+      photoUrl =
+          await _service.uploadTenantPhotoBytes(photoBytes, tenant.id);
+    }
 
+    final updatedTenant = tenant.copyWith(
+      photourl: photoUrl,
+    );
 
-  Future<void> setStatus(String tenantId, String status) =>
+    await _service.updateTenant(updatedTenant);
+
+    // watchTenants() will automatically refresh the list
+    notifyListeners();
+  }
+  Future<void> deleteTenant(String tenantId) async {
+    await _service.deleteTenant(tenantId);
+    notifyListeners();
+  }
+
+  Future<void> setStatus(
+    String tenantId,
+    String status,
+  ) =>
       _service.updateTenantStatus(tenantId, status);
-      Future<String> uploadTenantPhoto(Uint8List bytes, String tempId) =>
-    _service.uploadTenantPhotoBytes(bytes, tempId);
+
+  Future<String> uploadTenantPhoto(
+    Uint8List bytes,
+    String tempId,
+  ) =>
+      _service.uploadTenantPhotoBytes(bytes, tempId);
 
   @override
   void dispose() {

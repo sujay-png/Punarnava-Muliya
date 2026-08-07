@@ -33,13 +33,19 @@ class FirestoreService {
 
 
 // Add this method to your FirestoreService class
-Future<void> updateTenantRent(String tenantId, int newRent) async {
+Future<void> updateTenant(TenantModel tenant) async {
+  await FirebaseFirestore.instance
+      .collection('tenants')
+      .doc(tenant.id)
+      .update(tenant.toMap());
+}
+
+Future<void> deleteTenant(String tenantId) async {
   await FirebaseFirestore.instance
       .collection('tenants')
       .doc(tenantId)
-      .update({'monthlyRent': newRent});
+      .delete();
 }
-
 
   Future<void> updateTenantStatus(String tenantId, String status) => _db
       .collection(FirestoreCollections.tenants)

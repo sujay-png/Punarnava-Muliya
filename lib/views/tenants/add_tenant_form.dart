@@ -9,14 +9,82 @@ import '../../controllers/tenant_controller.dart';
 import '../../models/tenant_model.dart';
 
 class AddTenantView extends StatefulWidget {
-  const AddTenantView({super.key});
+  final TenantModel? tenant;
+
+  const AddTenantView({super.key, this.tenant});
 
   @override
   State<AddTenantView> createState() => _AddTenantViewState();
 }
 
 class _AddTenantViewState extends State<AddTenantView> {
-  final _db=FirestoreService();
+  @override
+  void initState() {
+    super.initState();
+
+    if (widget.tenant == null) return;
+
+    final t = widget.tenant!;
+
+    _name.text = t.name;
+    _phone.text = t.phone;
+    _email.text = t.email ?? '';
+    _address.text = t.permanentAddress ?? '';
+
+    if (t.dob != null) {
+      _dob.text = DateFormat('dd-MM-yyyy').format(t.dob!);
+    }
+
+    _age.text = t.age?.toString() ?? '';
+
+    _fatherName.text = t.fatherName ?? '';
+    _fatherPhone.text = t.fatherPhone ?? '';
+
+    _motherName.text = t.motherName ?? '';
+    _motherPhone.text = t.motherPhone ?? '';
+
+    _guardianName.text = t.guardianName ?? '';
+    _guardianPhone.text = t.guardianPhone ?? '';
+
+    _idProofType = t.idProofType;
+    _idNumber.text = t.idNumber;
+
+    _nationality.text = t.nationality ?? '';
+
+    _maritalStatus.text = t.maritalStatus ?? '';
+
+    _companyName.text = t.companyName ?? '';
+    _companyAddress.text = t.companyAddress ?? '';
+    _companyPhone.text = t.companyPhone ?? '';
+
+    _gender = t.occupationStatus;
+
+    _appointmentLetter.text = t.appointmentLetterRef ?? '';
+
+    _joinDate = t.joinDate;
+    _joinDateController.text = DateFormat('dd-MM-yyyy').format(t.joinDate);
+
+    _expectedStay.text = t.expectedStay ?? '';
+
+    _roomNo.text = t.roomNo;
+    _monthlyRent.text = t.monthlyRent.toString();
+
+    _vehicleModel.text = t.vehicleModel ?? '';
+    _vehicleNumber.text = t.vehicleNumber ?? '';
+
+    _bloodGroup.text = t.bloodGroup ?? '';
+
+    _healthCondition.text = t.healthCondition ?? '';
+
+    _signature.text = t.signature ?? '';
+
+    if (t.declarationDate != null) {
+      _declarationDate.text =
+          DateFormat('dd-MM-yyyy').format(t.declarationDate!);
+    }
+  }
+
+  final _db = FirestoreService();
   final _formKey = GlobalKey<FormState>();
   final _name = TextEditingController();
   final _address = TextEditingController();
@@ -92,7 +160,9 @@ class _AddTenantViewState extends State<AddTenantView> {
     return Scaffold(
       backgroundColor: const Color(0xFF12131A),
       appBar: AppBar(
-        title: const Text('New Tenant'),
+        title: Text(
+          widget.tenant == null ? "New Tenant" : "Edit Tenant",
+        ),
         backgroundColor: const Color(0xFF12131A),
         foregroundColor: Colors.white,
         elevation: 0,
@@ -918,30 +988,33 @@ class _AddTenantViewState extends State<AddTenantView> {
               width: 700,
               child: Center(
                 child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF3D6EF2),
-                    foregroundColor: Colors.white,
-                    minimumSize: const Size(220, 48),
-                    textStyle: const TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF3D6EF2),
+                      foregroundColor: Colors.white,
+                      minimumSize: const Size(220, 48),
+                      textStyle: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
                     ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                  onPressed: _saving ? null : _save,
-                  child: _saving
-                      ? const SizedBox(
-                          height: 20,
-                          width: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Colors.white,
-                          ),
-                        )
-                      : const Text('Register Tenant'),
-                ),
+                    onPressed: _saving ? null : _save,
+                    child: _saving
+                        ? const SizedBox(
+                            height: 20,
+                            width: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
+                        : Text(
+                            widget.tenant == null
+                                ? "Register Tenant"
+                                : "Update Tenant",
+                          )),
               ),
             ),
           ],
@@ -950,83 +1023,87 @@ class _AddTenantViewState extends State<AddTenantView> {
     );
   }
 
- Future<void> _save() async {
-  if (!_formKey.currentState!.validate()) return;
-  setState(() => _saving = true);
-  try {
-    final emergencyContact = _guardianPhone.text.trim().isNotEmpty
-        ? _guardianPhone.text.trim()
-        : _fatherPhone.text.trim();
+  Future<void> _save() async {
+    if (!_formKey.currentState!.validate()) return;
+    setState(() => _saving = true);
+    try {
+      final emergencyContact = _guardianPhone.text.trim().isNotEmpty
+          ? _guardianPhone.text.trim()
+          : _fatherPhone.text.trim();
 
-    DateTime? parseDate(String text) {
-      if (text.trim().isEmpty) return null;
-      try {
-        return DateFormat('dd-MM-yyyy').parseStrict(text.trim());
-      } catch (_) {
-        return null;
+      DateTime? parseDate(String text) {
+        if (text.trim().isEmpty) return null;
+        try {
+          return DateFormat('dd-MM-yyyy').parseStrict(text.trim());
+        } catch (_) {
+          return null;
+        }
       }
-    }
 
-    // upload photo first, if one was picked
-    String? photoUrl;
-    if (_profilePhotoBytes != null) {
-      final tempId = DateTime.now().millisecondsSinceEpoch.toString();
-      photoUrl = await context
-          .read<TenantController>()
-          .uploadTenantPhoto(_profilePhotoBytes!, tempId);
-    }
+      // upload photo first, if one was picked
+      String? photoUrl;
+      if (_profilePhotoBytes != null) {
+        final tempId = DateTime.now().millisecondsSinceEpoch.toString();
+        photoUrl = await context
+            .read<TenantController>()
+            .uploadTenantPhoto(_profilePhotoBytes!, tempId);
+      }
 
-    await context.read<TenantController>().addTenant(TenantModel(
-          id: '',
-          name: _name.text.trim(),
-          roomNo: _roomNo.text.trim().toUpperCase(),
-          phone: _phone.text.replaceAll(RegExp(r'\D'), ''),
-          joinDate: _joinDate,
-          monthlyRent: int.tryParse(_monthlyRent.text.trim()) ?? 0,
-          idProofType: _idProofType!,
-          idNumber: _idNumber.text.trim(),
-          emergencyContact: emergencyContact,
-          status: 'active',
-          email: _email.text.trim(),
-          dob: parseDate(_dob.text),
-          age: int.tryParse(_age.text.trim()),
-          permanentAddress: _address.text.trim(),
-          nationality: _nationality.text.trim(),
-          fatherName: _fatherName.text.trim(),
-          fatherPhone: _fatherPhone.text.trim(),
-          motherName: _motherName.text.trim(),
-          motherPhone: _motherPhone.text.trim(),
-          guardianName: _guardianName.text.trim(),
-          guardianPhone: _guardianPhone.text.trim(),
-          maritalStatus: _maritalStatus.text.trim(),
-          companyName: _companyName.text.trim(),
-          companyAddress: _companyAddress.text.trim(),
-          companyPhone: _companyPhone.text.trim(),
-          occupationStatus: _gender,
-          appointmentLetterRef: _appointmentLetter.text.trim(),
-          expectedStay: _expectedStay.text.trim(),
-          vehicleModel: _vehicleModel.text.trim(),
-          vehicleNumber: _vehicleNumber.text.trim(),
-          bloodGroup: _bloodGroup.text.trim(),
-          healthCondition: _healthCondition.text.trim(),
-          signature: _signature.text.trim(),
-          photourl: photoUrl, 
-          declarationDate: parseDate(_declarationDate.text),
-        ));
-        
-       
-    if (mounted) {
-      Navigator.pop(context);
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('Tenant registered')));
+      final tenant = TenantModel(
+        id: widget.tenant?.id ?? '',
+        name: _name.text.trim(),
+        roomNo: _roomNo.text.trim().toUpperCase(),
+        phone: _phone.text.replaceAll(RegExp(r'\D'), ''),
+        joinDate: _joinDate,
+        monthlyRent: int.tryParse(_monthlyRent.text) ?? 0,
+        idProofType: _idProofType!,
+        idNumber: _idNumber.text.trim(),
+        emergencyContact: emergencyContact,
+        status: widget.tenant?.status ?? 'active',
+        email: _email.text.trim(),
+        dob: parseDate(_dob.text),
+        age: int.tryParse(_age.text),
+        permanentAddress: _address.text.trim(),
+        nationality: _nationality.text.trim(),
+        fatherName: _fatherName.text.trim(),
+        fatherPhone: _fatherPhone.text.trim(),
+        motherName: _motherName.text.trim(),
+        motherPhone: _motherPhone.text.trim(),
+        guardianName: _guardianName.text.trim(),
+        guardianPhone: _guardianPhone.text.trim(),
+        maritalStatus: _maritalStatus.text.trim(),
+        companyName: _companyName.text.trim(),
+        companyAddress: _companyAddress.text.trim(),
+        companyPhone: _companyPhone.text.trim(),
+        occupationStatus: _gender,
+        appointmentLetterRef: _appointmentLetter.text.trim(),
+        expectedStay: _expectedStay.text.trim(),
+        vehicleModel: _vehicleModel.text.trim(),
+        vehicleNumber: _vehicleNumber.text.trim(),
+        bloodGroup: _bloodGroup.text.trim(),
+        healthCondition: _healthCondition.text.trim(),
+        signature: _signature.text.trim(),
+        declarationDate: parseDate(_declarationDate.text),
+        photourl: photoUrl ?? widget.tenant?.photourl,
+      );
+
+      if (widget.tenant == null) {
+        await context.read<TenantController>().addTenant(tenant);
+      } else {
+        await context.read<TenantController>().updateTenant(tenant);
+      }
+
+      if (mounted) {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context)
+            .showSnackBar(const SnackBar(content: Text('Tenant registered')));
+      }
+    } catch (e) {
+      debugPrint('Photo upload failed: $e');
+    } finally {
+      if (mounted) setState(() => _saving = false);
     }
-  } catch (e) {
-  debugPrint('Photo upload failed: $e');
   }
-  finally {
-    if (mounted) setState(() => _saving = false);
-  }
-}
 
   //============================ Helper methods ==========================
   Widget _formField(
