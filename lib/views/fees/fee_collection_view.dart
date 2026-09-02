@@ -79,6 +79,7 @@ class _FeeCollectionViewState extends State<FeeCollectionView> {
         for (final p in filtered)
           Card(
             child: ListTile(
+              onTap: () => _recordPayment(context, p),
               title: Text(p.tenantName,
                   style: const TextStyle(fontWeight: FontWeight.w700)),
               subtitle: Padding(
@@ -102,6 +103,22 @@ class _FeeCollectionViewState extends State<FeeCollectionView> {
                       style: const TextStyle(
                           color: AppColors.textSecondary, fontSize: 12),
                     ),
+                    if (p.installments.isNotEmpty ||
+                        (p.lastPaymentMethod != null &&
+                            p.lastPaymentMethod!.isNotEmpty))
+                      Padding(
+                        padding: const EdgeInsets.only(top: 2),
+                        child: Text(
+                          p.installments.isEmpty
+                              ? 'Paid via ${PaymentMethod.label(p.lastPaymentMethod!)}'
+                              : p.historyChronological
+                                  .map((i) => PaymentMethod.label(i.method))
+                                  .toSet()
+                                  .join(' · '),
+                          style: const TextStyle(
+                              color: AppColors.textSecondary, fontSize: 11),
+                        ),
+                      ),
                     if (p.couponUsed != null && p.isFullyPaid)
                       Padding(
                         padding: const EdgeInsets.only(top: 2),
@@ -130,19 +147,78 @@ class _FeeCollectionViewState extends State<FeeCollectionView> {
   }
 
   void _recordPayment(BuildContext context, PaymentModel p) {
-    final fmt = NumberFormat.decimalPattern('en_IN');
-    final controller = TextEditingController(text: '${p.remaining}');
     showDialog(
       context: context,
-      builder: (dialogContext) {
-        return AlertDialog(
-          backgroundColor: AppColors.surface,
-          title: const Text('Record payment'),
-          content: Column(
+      builder: (_) => _RecordPaymentDialog(payment: p),
+    );
+  }
+}
+
+class _RecordPaymentDialog extends StatefulWidget {
+  final PaymentModel payment;
+  const _RecordPaymentDialog({required this.payment});
+
+  @override
+  State<_RecordPaymentDialog> createState() => _RecordPaymentDialogState();
+}
+
+class _RecordPaymentDialogState extends State<_RecordPaymentDialog> {
+  late final TextEditingController _amount;
+  late String _method;
+
+  @override
+  void initState() {
+    super.initState();
+    final p = widget.payment;
+    _amount = TextEditingController(text: '${p.remaining}');
+    _method = PaymentMethod.all.contains(p.lastPaymentMethod)
+        ? p.lastPaymentMethod!
+        : PaymentMethod.upi;
+  }
+
+  @override
+  void dispose() {
+    _amount.dispose();
+    super.dispose();
+  }
+
+  String _who() {
+    final p = widget.payment;
+    if (p.roomNo.trim().isEmpty) return p.tenantName;
+    return '${p.tenantName} (${p.roomNo})';
+  }
+
+  void _save({required bool fullyPaid}) {
+    final p = widget.payment;
+    final fees = context.read<FeeController>();
+    if (fullyPaid) {
+      fees.markPaid(p, _method);
+    } else {
+      final raw = int.tryParse(_amount.text.replaceAll(',', '').trim());
+      if (raw == null || raw <= 0) return;
+      fees.recordPayment(p, raw, _method);
+    }
+    Navigator.pop(context);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final p = widget.payment;
+    final fmt = NumberFormat.decimalPattern('en_IN');
+    final dateFmt = DateFormat('d MMM, h:mm a');
+    final history = p.historyChronological;
+
+    return AlertDialog(
+      backgroundColor: AppColors.surface,
+      title: const Text('Record payment'),
+      content: SizedBox(
+        width: 420,
+        child: SingleChildScrollView(
+          child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('${p.tenantName} (${p.roomNo})'),
+              Text(_who()),
               const SizedBox(height: 12),
               Text('Rent: ₹${fmt.format(p.amount)}'),
               Text('Already paid: ₹${fmt.format(p.paidAmount)}'),
@@ -151,9 +227,75 @@ class _FeeCollectionViewState extends State<FeeCollectionView> {
                 style: const TextStyle(
                     color: AppColors.pending, fontWeight: FontWeight.w700),
               ),
+              const SizedBox(height: 16),
+              Text('HOW THEY PAID EARLIER',
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      color: AppColors.textSecondary, letterSpacing: 1.1)),
+              const SizedBox(height: 8),
+              if (history.isEmpty && p.paidAmount == 0)
+                const Text(
+                  'No earlier payments this month.',
+                  style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
+                )
+              else if (history.isEmpty)
+                Text(
+                  '₹${fmt.format(p.paidAmount)} recorded earlier'
+                  '${p.lastPaymentMethod != null && p.lastPaymentMethod!.isNotEmpty ? ' via ${PaymentMethod.label(p.lastPaymentMethod!)}' : ' (method not saved)'}',
+                  style: const TextStyle(
+                      color: AppColors.textSecondary, fontSize: 12),
+                )
+              else
+                for (final i in history)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 6),
+                    child: Row(
+                      children: [
+                        StatusChip(PaymentMethod.label(i.method)),
+                        const SizedBox(width: 8),
+                        Text('₹${fmt.format(i.amount)}',
+                            style:
+                                const TextStyle(fontWeight: FontWeight.w700)),
+                        if (i.recordedAt != null) ...[
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              dateFmt.format(i.recordedAt!),
+                              style: const TextStyle(
+                                  color: AppColors.textSecondary, fontSize: 11),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+              const SizedBox(height: 16),
+              if (!p.isFullyPaid) ...[
+              Text('HOW THEY ARE PAYING NOW',
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      color: AppColors.textSecondary, letterSpacing: 1.1)),
+              const SizedBox(height: 8),
+              DropdownButtonFormField<String>(
+                value: _method,
+                dropdownColor: AppColors.surfaceAlt,
+                decoration: const InputDecoration(
+                  labelText: 'Payment method',
+                ),
+                items: [
+                  for (final m in PaymentMethod.all)
+                    DropdownMenuItem(
+                      value: m,
+                      child: Text(PaymentMethod.label(m)),
+                    ),
+                ],
+                onChanged: (v) {
+                  if (v == null) return;
+                  setState(() => _method = v);
+                },
+              ),
               const SizedBox(height: 12),
               TextField(
-                controller: controller,
+                controller: _amount,
                 keyboardType: TextInputType.number,
                 decoration: const InputDecoration(
                   labelText: 'Amount received now',
@@ -162,37 +304,30 @@ class _FeeCollectionViewState extends State<FeeCollectionView> {
               ),
               const SizedBox(height: 8),
               const Text(
-                'Use a smaller amount if UPI bank limits block the full rent. '
                 'EARLY10 (10% off shop products, not rent) applies only when '
                 'the full rent is cleared on or before the 5th.',
                 style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
               ),
+              ],
             ],
           ),
-          actions: [
-            TextButton(
-                onPressed: () => Navigator.pop(dialogContext),
-                child: const Text('Cancel')),
-            OutlinedButton(
-              onPressed: () {
-                context.read<FeeController>().markPaid(p);
-                Navigator.pop(dialogContext);
-              },
-              child: const Text('Mark fully paid'),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                final raw =
-                    int.tryParse(controller.text.replaceAll(',', '').trim());
-                if (raw == null || raw <= 0) return;
-                context.read<FeeController>().recordPayment(p, raw);
-                Navigator.pop(dialogContext);
-              },
-              child: const Text('Save'),
-            ),
-          ],
-        );
-      },
-    ).whenComplete(controller.dispose);
+        ),
+      ),
+      actions: [
+        TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel')),
+        if (!p.isFullyPaid) ...[
+        OutlinedButton(
+          onPressed: () => _save(fullyPaid: true),
+          child: const Text('Mark fully paid'),
+        ),
+        ElevatedButton(
+          onPressed: () => _save(fullyPaid: false),
+          child: const Text('Save'),
+        ),
+        ],
+      ],
+    );
   }
 }

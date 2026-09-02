@@ -17,8 +17,28 @@ void main() {
     expect(p.isFullyPaid, isFalse);
   });
 
+  test('installment history keeps method and amount', () {
+    const p = PaymentModel(
+      id: '1',
+      tenantId: 't1',
+      tenantName: 'Bhuvanesh',
+      roomNo: 'A1',
+      monthKey: '2026-09',
+      amount: 3000,
+      paidAmount: 1500,
+      status: 'partial',
+      lastPaymentMethod: 'cash',
+      installments: [
+        PaymentInstallment(amount: 1000, method: 'upi'),
+        PaymentInstallment(amount: 500, method: 'cash'),
+      ],
+    );
+    expect(p.historyChronological.map((i) => i.method).toList(),
+        ['upi', 'cash']);
+    expect(p.lastPaymentMethod, 'cash');
+  });
+
   test('legacy paid docs without paidAmount are treated as fully paid', () {
-    // fromDoc path is covered by constructor used in fromDoc:
     const p = PaymentModel(
       id: '1',
       tenantId: 't1',

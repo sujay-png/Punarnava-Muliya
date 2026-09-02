@@ -31,5 +31,11 @@ module.exports = {
     PENDING: "pending",
     OVERDUE: "overdue",
   },
+  PAYMENT_METHOD: {
+    UPI: "upi",
+    CASH: "cash",
+    BANK_TRANSFER: "bank_transfer",
+    OTHER: "other",
+  },
   MESSAGE_STATUS: { SENT: "sent", FAILED: "failed" },
 };

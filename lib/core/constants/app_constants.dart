@@ -22,6 +22,23 @@ class PaymentStatus {
   static const overdue = 'overdue';
 }
 
+class PaymentMethod {
+  static const upi = 'upi';
+  static const cash = 'cash';
+  static const bankTransfer = 'bank_transfer';
+  static const other = 'other';
+
+  static const all = [upi, cash, bankTransfer, other];
+
+  static String label(String method) => switch (method) {
+        upi => 'UPI',
+        cash => 'Cash',
+        bankTransfer => 'Bank transfer',
+        other => 'Other',
+        _ => method,
+      };
+}
+
 class MaintenanceStatus {
   static const open = 'open';
   static const inProgress = 'in_progress';

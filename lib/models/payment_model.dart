@@ -6,6 +6,33 @@ int firestoreInt(dynamic value) {
   return 0;
 }
 
+class PaymentInstallment {
+  final int amount;
+  final String method;
+  final DateTime? recordedAt;
+
+  const PaymentInstallment({
+    required this.amount,
+    required this.method,
+    this.recordedAt,
+  });
+
+  factory PaymentInstallment.fromMap(Map<String, dynamic> d) {
+    return PaymentInstallment(
+      amount: firestoreInt(d['amount']),
+      method: (d['method'] ?? '') as String,
+      recordedAt: (d['recordedAt'] as Timestamp?)?.toDate(),
+    );
+  }
+
+  Map<String, dynamic> toMap() => {
+        'amount': amount,
+        'method': method,
+        'recordedAt':
+            recordedAt == null ? null : Timestamp.fromDate(recordedAt!),
+      };
+}
+
 class PaymentModel {
   final String id;
   final String tenantId;
@@ -17,6 +44,8 @@ class PaymentModel {
   final String status; // paid | partial | pending | overdue
   final DateTime? paidAt;
   final String? couponUsed; // EARLY10 — shop products only, if fully paid by 5th
+  final String? lastPaymentMethod;
+  final List<PaymentInstallment> installments;
 
   const PaymentModel({
     required this.id,
@@ -29,6 +58,8 @@ class PaymentModel {
     required this.status,
     this.paidAt,
     this.couponUsed,
+    this.lastPaymentMethod,
+    this.installments = const [],
   });
 
   int get remaining {
@@ -39,6 +70,16 @@ class PaymentModel {
 
   bool get isFullyPaid => remaining <= 0;
 
+  List<PaymentInstallment> get historyChronological {
+    final copy = [...installments];
+    copy.sort((a, b) {
+      final at = a.recordedAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+      final bt = b.recordedAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+      return at.compareTo(bt);
+    });
+    return copy;
+  }
+
   factory PaymentModel.fromDoc(DocumentSnapshot doc) {
     final d = doc.data() as Map<String, dynamic>;
     final amount = firestoreInt(d['amount']);
@@ -47,6 +88,14 @@ class PaymentModel {
     final paidAmount = storedPaid != null
         ? firestoreInt(storedPaid)
         : (status == 'paid' ? amount : 0);
+    final rawInstallments = d['installments'];
+    final installments = rawInstallments is List
+        ? rawInstallments
+            .whereType<Map>()
+            .map((e) => PaymentInstallment.fromMap(
+                Map<String, dynamic>.from(e)))
+            .toList()
+        : <PaymentInstallment>[];
     return PaymentModel(
       id: doc.id,
       tenantId: d['tenantId'] ?? '',
@@ -58,6 +107,8 @@ class PaymentModel {
       status: status,
       paidAt: (d['paidAt'] as Timestamp?)?.toDate(),
       couponUsed: d['couponUsed'],
+      lastPaymentMethod: d['lastPaymentMethod'],
+      installments: installments,
     );
   }
 
@@ -71,6 +122,7 @@ class PaymentModel {
         'status': status,
         'paidAt': paidAt == null ? null : Timestamp.fromDate(paidAt!),
         'couponUsed': couponUsed,
+        'lastPaymentMethod': lastPaymentMethod,
       };
 
   PaymentModel copyWith({
@@ -84,6 +136,8 @@ class PaymentModel {
     String? status,
     DateTime? paidAt,
     String? couponUsed,
+    String? lastPaymentMethod,
+    List<PaymentInstallment>? installments,
   }) {
     return PaymentModel(
       id: id ?? this.id,
@@ -96,6 +150,8 @@ class PaymentModel {
       status: status ?? this.status,
       paidAt: paidAt ?? this.paidAt,
       couponUsed: couponUsed ?? this.couponUsed,
+      lastPaymentMethod: lastPaymentMethod ?? this.lastPaymentMethod,
+      installments: installments ?? this.installments,
     );
   }
 }

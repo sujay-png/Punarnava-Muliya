@@ -80,12 +80,16 @@ class FeeController extends ChangeNotifier {
         : PaymentStatus.pending;
   }
 
-  Future<void> markPaid(PaymentModel payment) =>
-      recordPayment(payment, payment.remaining);
+  Future<void> markPaid(PaymentModel payment, String method) =>
+      recordPayment(payment, payment.remaining, method);
 
   /// Record an installment. Completing rent on or before the 5th earns EARLY10
   /// for shop products (never applied to rent).
-  Future<void> recordPayment(PaymentModel payment, int installment) {
+  Future<void> recordPayment(
+    PaymentModel payment,
+    int installment,
+    String method,
+  ) {
     final remaining = payment.remaining;
     final add = installment < 0
         ? 0
@@ -106,7 +110,10 @@ class FeeController extends ChangeNotifier {
         paidAmount: newPaid,
         status: status,
         couponUsed: coupon,
+        lastPaymentMethod: method,
       ),
+      installmentAmount: add,
+      method: method,
     );
   }
 
