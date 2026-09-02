@@ -13,7 +13,7 @@ async function getBillableTenants() {
   return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
 }
 
-/** Tenant IDs that have already PAID for the given month, e.g. "2026-07". */
+/** Tenant IDs that have already PAID in full for the given month, e.g. "2026-07". */
 async function getPaidTenantIds(monthKey) {
   const snap = await db()
     .collection(COLLECTIONS.PAYMENTS)
@@ -21,6 +21,20 @@ async function getPaidTenantIds(monthKey) {
     .where("status", "==", PAYMENT_STATUS.PAID)
     .get();
   return new Set(snap.docs.map((d) => d.data().tenantId));
+}
+
+/** All payment docs for a month, keyed by tenantId (includes partials). */
+async function getPaymentsByMonth(monthKey) {
+  const snap = await db()
+    .collection(COLLECTIONS.PAYMENTS)
+    .where("monthKey", "==", monthKey)
+    .get();
+  const byTenant = new Map();
+  for (const d of snap.docs) {
+    const data = d.data();
+    byTenant.set(data.tenantId, { id: d.id, ...data });
+  }
+  return byTenant;
 }
 
 /**
@@ -75,6 +89,6 @@ async function getFeaturedProduct() {
 }
 
 module.exports = {
-  getBillableTenants, getPaidTenantIds, wasReminderSent,
+  getBillableTenants, getPaidTenantIds, getPaymentsByMonth, wasReminderSent,
   logMessage, getFailedReminders, getTenantById, getFeaturedProduct,
 };

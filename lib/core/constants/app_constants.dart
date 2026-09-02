@@ -17,8 +17,26 @@ class TenantStatus {
 
 class PaymentStatus {
   static const paid = 'paid';
+  static const partial = 'partial';
   static const pending = 'pending';
   static const overdue = 'overdue';
+}
+
+class PaymentMethod {
+  static const upi = 'upi';
+  static const cash = 'cash';
+  static const bankTransfer = 'bank_transfer';
+  static const other = 'other';
+
+  static const all = [upi, cash, bankTransfer, other];
+
+  static String label(String method) => switch (method) {
+        upi => 'UPI',
+        cash => 'Cash',
+        bankTransfer => 'Bank transfer',
+        other => 'Other',
+        _ => method,
+      };
 }
 
 class MaintenanceStatus {
@@ -29,5 +47,8 @@ class MaintenanceStatus {
 
 class ReminderConfig {
   static const reminderDays = [1, 3, 5, 7, 10, 15];
+  static const productOfferDays = [1, 3, 5, 7, 10, 15];
+  static const earlyBirdLastDay = 5;
   static const earlyBirdCoupon = 'EARLY10';
+  static const productDiscountPercent = 10;
 }

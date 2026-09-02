@@ -1,15 +1,51 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+int firestoreInt(dynamic value) {
+  if (value is int) return value;
+  if (value is num) return value.round();
+  return 0;
+}
+
+class PaymentInstallment {
+  final int amount;
+  final String method;
+  final DateTime? recordedAt;
+
+  const PaymentInstallment({
+    required this.amount,
+    required this.method,
+    this.recordedAt,
+  });
+
+  factory PaymentInstallment.fromMap(Map<String, dynamic> d) {
+    return PaymentInstallment(
+      amount: firestoreInt(d['amount']),
+      method: (d['method'] ?? '') as String,
+      recordedAt: (d['recordedAt'] as Timestamp?)?.toDate(),
+    );
+  }
+
+  Map<String, dynamic> toMap() => {
+        'amount': amount,
+        'method': method,
+        'recordedAt':
+            recordedAt == null ? null : Timestamp.fromDate(recordedAt!),
+      };
+}
+
 class PaymentModel {
   final String id;
   final String tenantId;
   final String tenantName;
   final String roomNo;
   final String monthKey; // "2026-07" — matches Cloud Function key
-  final int amount;
-  final String status;   // paid | pending | overdue
+  final int amount; // monthly rent due
+  final int paidAmount; // collected so far this month
+  final String status; // paid | partial | pending | overdue
   final DateTime? paidAt;
-  final String? couponUsed; // e.g. EARLY10
+  final String? couponUsed; // EARLY10 — shop products only, if fully paid by 5th
+  final String? lastPaymentMethod;
+  final List<PaymentInstallment> installments;
 
   const PaymentModel({
     required this.id,
@@ -18,23 +54,61 @@ class PaymentModel {
     required this.roomNo,
     required this.monthKey,
     required this.amount,
+    this.paidAmount = 0,
     required this.status,
     this.paidAt,
     this.couponUsed,
+    this.lastPaymentMethod,
+    this.installments = const [],
   });
+
+  int get remaining {
+    final left = amount - paidAmount;
+    if (left < 0) return 0;
+    return left;
+  }
+
+  bool get isFullyPaid => remaining <= 0;
+
+  List<PaymentInstallment> get historyChronological {
+    final copy = [...installments];
+    copy.sort((a, b) {
+      final at = a.recordedAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+      final bt = b.recordedAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+      return at.compareTo(bt);
+    });
+    return copy;
+  }
 
   factory PaymentModel.fromDoc(DocumentSnapshot doc) {
     final d = doc.data() as Map<String, dynamic>;
+    final amount = firestoreInt(d['amount']);
+    final status = (d['status'] ?? 'pending') as String;
+    final storedPaid = d['paidAmount'];
+    final paidAmount = storedPaid != null
+        ? firestoreInt(storedPaid)
+        : (status == 'paid' ? amount : 0);
+    final rawInstallments = d['installments'];
+    final installments = rawInstallments is List
+        ? rawInstallments
+            .whereType<Map>()
+            .map((e) => PaymentInstallment.fromMap(
+                Map<String, dynamic>.from(e)))
+            .toList()
+        : <PaymentInstallment>[];
     return PaymentModel(
       id: doc.id,
       tenantId: d['tenantId'] ?? '',
       tenantName: d['tenantName'] ?? '',
       roomNo: d['roomNo'] ?? '',
       monthKey: d['monthKey'] ?? '',
-      amount: (d['amount'] ?? 0) as int,
-      status: d['status'] ?? 'pending',
+      amount: amount,
+      paidAmount: paidAmount,
+      status: status,
       paidAt: (d['paidAt'] as Timestamp?)?.toDate(),
       couponUsed: d['couponUsed'],
+      lastPaymentMethod: d['lastPaymentMethod'],
+      installments: installments,
     );
   }
 
@@ -44,8 +118,40 @@ class PaymentModel {
         'roomNo': roomNo,
         'monthKey': monthKey,
         'amount': amount,
+        'paidAmount': paidAmount,
         'status': status,
         'paidAt': paidAt == null ? null : Timestamp.fromDate(paidAt!),
         'couponUsed': couponUsed,
+        'lastPaymentMethod': lastPaymentMethod,
       };
+
+  PaymentModel copyWith({
+    String? id,
+    String? tenantId,
+    String? tenantName,
+    String? roomNo,
+    String? monthKey,
+    int? amount,
+    int? paidAmount,
+    String? status,
+    DateTime? paidAt,
+    String? couponUsed,
+    String? lastPaymentMethod,
+    List<PaymentInstallment>? installments,
+  }) {
+    return PaymentModel(
+      id: id ?? this.id,
+      tenantId: tenantId ?? this.tenantId,
+      tenantName: tenantName ?? this.tenantName,
+      roomNo: roomNo ?? this.roomNo,
+      monthKey: monthKey ?? this.monthKey,
+      amount: amount ?? this.amount,
+      paidAmount: paidAmount ?? this.paidAmount,
+      status: status ?? this.status,
+      paidAt: paidAt ?? this.paidAt,
+      couponUsed: couponUsed ?? this.couponUsed,
+      lastPaymentMethod: lastPaymentMethod ?? this.lastPaymentMethod,
+      installments: installments ?? this.installments,
+    );
+  }
 }

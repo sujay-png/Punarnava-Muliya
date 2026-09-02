@@ -60,14 +60,28 @@ Future<void> deleteTenant(String tenantId) async {
       .map((s) => s.docs.map(PaymentModel.fromDoc).toList());
 
   /// Doc id `tenantId_monthKey` = one payment per tenant per month, no dupes.
-  Future<void> markPaid(PaymentModel payment) => _db
-      .collection(FirestoreCollections.payments)
-      .doc('${payment.tenantId}_${payment.monthKey}')
-      .set({
-        ...payment.toMap(),
-        'status': PaymentStatus.paid,
-        'paidAt': FieldValue.serverTimestamp(),
-      }, SetOptions(merge: true));
+  Future<void> recordPayment(
+    PaymentModel payment, {
+    required int installmentAmount,
+    required String method,
+  }) {
+    final data = {
+      ...payment.toMap(),
+      'lastPaymentMethod': method,
+      'paidAt': FieldValue.serverTimestamp(),
+      'installments': FieldValue.arrayUnion([
+        {
+          'amount': installmentAmount,
+          'method': method,
+          'recordedAt': Timestamp.now(),
+        }
+      ]),
+    };
+    return _db
+        .collection(FirestoreCollections.payments)
+        .doc('${payment.tenantId}_${payment.monthKey}')
+        .set(data, SetOptions(merge: true));
+  }
 
   // ---------- Maintenance ----------
   Stream<List<MaintenanceModel>> watchMaintenance() => _db

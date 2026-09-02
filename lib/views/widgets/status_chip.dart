@@ -7,6 +7,7 @@ class StatusChip extends StatelessWidget {
 
   Color get _color => switch (label.toLowerCase()) {
         'paid' || 'active' || 'resolved' => AppColors.paid,
+        'partial' => AppColors.pending,
         'pending' || 'notice' || 'open' || 'queued' => AppColors.pending,
         'overdue' || 'failed' || 'high' => AppColors.overdue,
         _ => AppColors.textSecondary,

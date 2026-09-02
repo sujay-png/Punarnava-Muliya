@@ -4,64 +4,35 @@
  * sendFeeReminders — runs every day at 10:00 IST. It exits immediately unless
  * today is one of REMINDER_DAYS (1, 3, 5, 7, 10, 15). On reminder days it:
  *   1. loads all billable tenants,
- *   2. removes those who already paid this month,
- *   3. sends the WhatsApp template (early-bird variant before the 5th),
+ *   2. removes those who already paid this month in full,
+ *   3. sends the WhatsApp template (shop-product offer on every reminder through the 15th; last day to avail is the 5th),
  *   4. logs every send so re-runs are idempotent and failures can be retried.
+ *
+ * UPI links always carry remaining rent due. The 10% EARLY10 offer is for
+ * the owner's shop products only — never subtracted from rent.
  */
 const { onSchedule } = require("firebase-functions/v2/scheduler");
 const { logger } = require("firebase-functions");
 const msg91 = require("../services/msg91Service");
 const repo = require("../services/tenantRepository");
-const { todayInIST, monthLabel } = require("../utils/dateUtils");
+const { todayInIST } = require("../utils/dateUtils");
 const {
-  REMINDER_DAYS, EARLY_BIRD_LAST_DAY, EARLY_BIRD_COUPON,
-  EARLY_BIRD_DISCOUNT_PERCENT, TIMEZONE,
-} = require("../config/constants");
-
-
-
-/** Per-tenant UPI deep link, amount pre-filled. Opens GPay/PhonePe/Paytm on tap. */
-function buildUpiLink(tenant, ctx) {
-  // Pre-apply the 10% early-bird discount in the link before the 5th:
-  const amount = ctx.earlyBird
-    ? Math.round(tenant.monthlyRent * (1 - EARLY_BIRD_DISCOUNT_PERCENT / 100))
-    : tenant.monthlyRent;
-
-  const params = new URLSearchParams({
-    pa: process.env.UPI_ID,                       // gcmulia@kbl
-    pn: process.env.UPI_PAYEE_NAME || "PG Rent",
-    am: String(amount),
-    cu: "INR",
-    tn: `Rent ${monthLabel(ctx.date)} ${tenant.roomNo || ""}`.trim(),
-  });
-  return `upi://pay?${params.toString()}`;
-}
-
-
-/** Build the template variables for one tenant. Order must match {{1}}..{{n}}. */
-function buildComponents(tenant, ctx) {
-  const base = {
-    body_1: { type: "text", value: tenant.name },                    // {{1}} name
-    body_2: { type: "text", value: monthLabel(ctx.date) },           // {{2}} month
-    body_3: { type: "text", value: `₹${tenant.monthlyRent}` },       // {{3}} amount
-    body_4: { type: "text", value: buildUpiLink(tenant, ctx) },      // {{4}} UPI link
-  };
-  if (ctx.earlyBird) {
-    base.body_5 = { type: "text", value: EARLY_BIRD_COUPON };                 // {{5}}
-    base.body_6 = { type: "text", value: `${EARLY_BIRD_DISCOUNT_PERCENT}%` }; // {{6}}
-  }
-  return base;
-}
+  remainingRent,
+  shouldIncludeProductOffer,
+  buildComponents,
+} = require("../utils/feeUtils");
+const { REMINDER_DAYS, TIMEZONE } = require("../config/constants");
 
 async function runReminderCycle(day, monthKey, date) {
-  const earlyBird = day < EARLY_BIRD_LAST_DAY; // 1st & 3rd → EARLY10 offer
-  const templateName = earlyBird
+  const productOffer = shouldIncludeProductOffer(day);
+  const templateName = productOffer
     ? process.env.TEMPLATE_FEE_REMINDER_EARLY
     : process.env.TEMPLATE_FEE_REMINDER;
 
-  const [tenants, paidIds] = await Promise.all([
+  const [tenants, paidIds, payments] = await Promise.all([
     repo.getBillableTenants(),
     repo.getPaidTenantIds(monthKey),
+    repo.getPaymentsByMonth(monthKey),
   ]);
 
   const unpaid = tenants.filter((t) => !paidIds.has(t.id) && t.phone);
@@ -70,11 +41,13 @@ async function runReminderCycle(day, monthKey, date) {
   let sent = 0, failed = 0, skipped = 0;
   for (const tenant of unpaid) {
     if (await repo.wasReminderSent(tenant.id, monthKey, day)) { skipped++; continue; }
+    const payment = payments.get(tenant.id);
+    if (remainingRent(tenant, payment) <= 0) { skipped++; continue; }
     try {
       await msg91.sendTemplate(
         templateName,
         `91${String(tenant.phone).replace(/\D/g, "").slice(-10)}`,
-        buildComponents(tenant, { date, earlyBird })
+        buildComponents(tenant, { date, productOffer }, payment)
       );
       await repo.logMessage({ tenantId: tenant.id, monthKey, day, type: "reminder", status: "sent" });
       sent++;
@@ -125,19 +98,23 @@ exports.retryFailedReminders = onSchedule(
     if (!failures.length) return;
     logger.info(`Retrying ${failures.length} failed reminders`);
 
-    const earlyBird = day < EARLY_BIRD_LAST_DAY;
-    const templateName = earlyBird
+    const productOffer = shouldIncludeProductOffer(day);
+    const templateName = productOffer
       ? process.env.TEMPLATE_FEE_REMINDER_EARLY
       : process.env.TEMPLATE_FEE_REMINDER;
+
+    const payments = await repo.getPaymentsByMonth(monthKey);
 
     for (const f of failures) {
       const tenant = await repo.getTenantById(f.tenantId);
       if (!tenant || !tenant.phone) continue;
+      const payment = payments.get(tenant.id);
+      if (remainingRent(tenant, payment) <= 0) continue;
       try {
         await msg91.sendTemplate(
           templateName,
           `91${String(tenant.phone).replace(/\D/g, "").slice(-10)}`,
-          buildComponents(tenant, { date, earlyBird })
+          buildComponents(tenant, { date, productOffer }, payment)
         );
         await repo.logMessage({ tenantId: tenant.id, monthKey, day, type: "reminder", status: "sent" });
       } catch (err) {

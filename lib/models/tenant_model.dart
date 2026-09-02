@@ -1,5 +1,11 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+int _asInt(dynamic value) {
+  if (value is int) return value;
+  if (value is num) return value.round();
+  return 0;
+}
+
 class TenantModel {
   final String id;
   final String name;
@@ -86,7 +92,7 @@ class TenantModel {
       roomNo: d['roomNo'] ?? '',
       phone: d['phone'] ?? '',
       joinDate: (d['joinDate'] as Timestamp?)?.toDate() ?? DateTime.now(),
-      monthlyRent: (d['monthlyRent'] ?? 0) as int,
+      monthlyRent: _asInt(d['monthlyRent']),
       idProofType: d['idProofType'] ?? '',
       idNumber: d['idNumber'] ?? '',
       emergencyContact: d['emergencyContact'] ?? '',
