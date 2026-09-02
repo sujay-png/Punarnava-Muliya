@@ -30,7 +30,7 @@ class MaintenanceStatus {
 
 class ReminderConfig {
   static const reminderDays = [1, 3, 5, 7, 10, 15];
-  static const productOfferDays = [1, 3, 5];
+  static const productOfferDays = [1, 3, 5, 7, 10, 15];
   static const earlyBirdLastDay = 5;
   static const earlyBirdCoupon = 'EARLY10';
   static const productDiscountPercent = 10;

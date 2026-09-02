@@ -5,7 +5,7 @@
  * today is one of REMINDER_DAYS (1, 3, 5, 7, 10, 15). On reminder days it:
  *   1. loads all billable tenants,
  *   2. removes those who already paid this month in full,
- *   3. sends the WhatsApp template (shop-product offer on 1st / 3rd / 5th),
+ *   3. sends the WhatsApp template (shop-product offer on every reminder through the 15th; last day to avail is the 5th),
  *   4. logs every send so re-runs are idempotent and failures can be retried.
  *
  * UPI links always carry remaining rent due. The 10% EARLY10 offer is for

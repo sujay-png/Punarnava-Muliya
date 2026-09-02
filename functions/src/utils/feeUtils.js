@@ -2,8 +2,9 @@
  * Rent vs shop-offer helpers shared by reminder jobs.
  *
  * Rent in UPI links is always the remaining rent due — never discounted.
- * EARLY10 is 10% off the owner's shop products, only advertised on the
- * 1st / 3rd / 5th, and only earned if rent is paid in full on or before the 5th.
+ * EARLY10 is 10% off the owner's shop products. It is included on every
+ * reminder through the 15th. Tenants can only avail it if rent is paid
+ * in full on or before the 5th. Never applied to rent.
  */
 const {
   EARLY_BIRD_LAST_DAY,
@@ -36,7 +37,7 @@ function remainingRent(tenant, payment) {
   return Math.max(0, monthlyRent(tenant) - paidAmount(payment));
 }
 
-/** True for reminder days 1, 3, and 5 — shop 10% offer goes in the message. */
+/** Shop 10% offer is included on every reminder day through the 15th. */
 function shouldIncludeProductOffer(day) {
   return PRODUCT_OFFER_DAYS.includes(Number(day));
 }
@@ -79,7 +80,7 @@ function buildComponents(tenant, ctx, payment) {
     base.body_5 = { type: "text", value: EARLY_BIRD_COUPON };
     base.body_6 = {
       type: "text",
-      value: `${EARLY_BIRD_DISCOUNT_PERCENT}% off shop products (not rent)`,
+      value: `${EARLY_BIRD_DISCOUNT_PERCENT}% off shop products (not rent) — last date to avail is the 5th`,
     };
   }
   return base;

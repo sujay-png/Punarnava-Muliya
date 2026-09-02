@@ -34,13 +34,12 @@ test("legacy paid docs without paidAmount count as fully paid", () => {
   assert.equal(remainingRent(tenant, { status: "paid", amount: 3000 }), 0);
 });
 
-test("product offer is only on the 1st, 3rd and 5th", () => {
-  assert.equal(shouldIncludeProductOffer(1), true);
-  assert.equal(shouldIncludeProductOffer(3), true);
-  assert.equal(shouldIncludeProductOffer(5), true);
-  assert.equal(shouldIncludeProductOffer(7), false);
-  assert.equal(shouldIncludeProductOffer(10), false);
-  assert.equal(shouldIncludeProductOffer(15), false);
+test("product offer is included on every reminder through the 15th", () => {
+  for (const day of [1, 3, 5, 7, 10, 15]) {
+    assert.equal(shouldIncludeProductOffer(day), true);
+  }
+  assert.equal(shouldIncludeProductOffer(2), false);
+  assert.equal(shouldIncludeProductOffer(16), false);
 });
 
 test("EARLY10 is earned only when rent is cleared on or before the 5th", () => {
@@ -57,5 +56,6 @@ test("early template vars keep rent full and describe shop discount", () => {
   assert.match(components.body_4.value, /am=3000/);
   assert.equal(components.body_5.value, "EARLY10");
   assert.match(components.body_6.value, /shop products/);
+  assert.match(components.body_6.value, /5th/);
   assert.doesNotMatch(components.body_6.value, /off rent/i);
 });

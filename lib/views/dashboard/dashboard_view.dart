@@ -87,10 +87,10 @@ class DashboardView extends StatelessWidget {
                 ),
                 const SizedBox(height: 8),
                 const Text(
-                  'Pay rent in full on or before the 5th to get code '
-                  '${ReminderConfig.earlyBirdCoupon} for '
+                  'Reminders continue until the 15th. The 5th is the last date '
+                  'to avail code ${ReminderConfig.earlyBirdCoupon} for '
                   '${ReminderConfig.productDiscountPercent}% off shop products '
-                  '(not rent). Offer is sent on the 1st, 3rd and 5th.',
+                  '(not rent). Pay rent in full on or before the 5th.',
                   style: TextStyle(color: AppColors.accent),
                 ),
               ],
