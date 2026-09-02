@@ -60,14 +60,20 @@ Future<void> deleteTenant(String tenantId) async {
       .map((s) => s.docs.map(PaymentModel.fromDoc).toList());
 
   /// Doc id `tenantId_monthKey` = one payment per tenant per month, no dupes.
-  Future<void> markPaid(PaymentModel payment) => _db
+  Future<void> recordPayment(PaymentModel payment) => _db
       .collection(FirestoreCollections.payments)
       .doc('${payment.tenantId}_${payment.monthKey}')
       .set({
         ...payment.toMap(),
-        'status': PaymentStatus.paid,
         'paidAt': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));
+
+  Future<void> markPaid(PaymentModel payment) => recordPayment(
+        payment.copyWith(
+          paidAmount: payment.amount,
+          status: PaymentStatus.paid,
+        ),
+      );
 
   // ---------- Maintenance ----------
   Stream<List<MaintenanceModel>> watchMaintenance() => _db

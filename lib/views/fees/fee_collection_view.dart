@@ -28,7 +28,7 @@ class _FeeCollectionViewState extends State<FeeCollectionView> {
         _filter == 'all' ? rows : rows.where((p) => p.status == _filter).toList();
     final pending = rows
         .where((p) => p.status != PaymentStatus.paid)
-        .fold(0, (s, p) => s + p.amount);
+        .fold(0, (s, p) => s + p.remaining);
     final fmt = NumberFormat.decimalPattern('en_IN');
 
     return ListView(
@@ -47,12 +47,12 @@ class _FeeCollectionViewState extends State<FeeCollectionView> {
           Expanded(
               child: StatCard(
                   label: 'Collected',
-                  value: '₹${fmt.format(fees.collected)}',
+                  value: '₹${fmt.format(rows.fold(0, (s, p) => s + p.paidAmount))}',
                   valueColor: AppColors.paid)),
           const SizedBox(width: 12),
           Expanded(
               child: StatCard(
-                  label: 'Pending',
+                  label: 'Yet to pay',
                   value: '₹${fmt.format(pending)}',
                   valueColor: AppColors.pending)),
         ]),
@@ -60,7 +60,13 @@ class _FeeCollectionViewState extends State<FeeCollectionView> {
         Wrap(
           spacing: 8,
           children: [
-            for (final f in ['all', 'paid', 'pending', 'overdue'])
+            for (final f in [
+              'all',
+              PaymentStatus.paid,
+              PaymentStatus.partial,
+              PaymentStatus.pending,
+              PaymentStatus.overdue,
+            ])
               ChoiceChip(
                 label: Text(f.toUpperCase()),
                 selected: _filter == f,
@@ -77,22 +83,45 @@ class _FeeCollectionViewState extends State<FeeCollectionView> {
                   style: const TextStyle(fontWeight: FontWeight.w700)),
               subtitle: Padding(
                 padding: const EdgeInsets.only(top: 4),
-                child: Row(children: [
-                  Text(p.roomNo,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(children: [
+                      Text(p.roomNo,
+                          style: const TextStyle(
+                              color: AppColors.accent,
+                              fontWeight: FontWeight.w700)),
+                      const SizedBox(width: 10),
+                      StatusChip(p.status),
+                    ]),
+                    const SizedBox(height: 4),
+                    Text(
+                      p.isFullyPaid
+                          ? '₹${fmt.format(p.amount)} received'
+                          : 'Paid ₹${fmt.format(p.paidAmount)} of ₹${fmt.format(p.amount)}  ·  due ₹${fmt.format(p.remaining)}',
                       style: const TextStyle(
-                          color: AppColors.accent,
-                          fontWeight: FontWeight.w700)),
-                  const SizedBox(width: 10),
-                  StatusChip(p.status),
-                ]),
+                          color: AppColors.textSecondary, fontSize: 12),
+                    ),
+                    if (p.couponUsed != null && p.isFullyPaid)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 2),
+                        child: Text(
+                          '${p.couponUsed} — 10% off shop products',
+                          style: const TextStyle(
+                              color: AppColors.accent, fontSize: 11),
+                        ),
+                      ),
+                  ],
+                ),
               ),
-              trailing: p.status == PaymentStatus.paid
+              isThreeLine: true,
+              trailing: p.isFullyPaid
                   ? Text('₹${fmt.format(p.amount)}',
                       style: const TextStyle(
                           color: AppColors.paid, fontWeight: FontWeight.w700))
                   : OutlinedButton(
-                      onPressed: () => _confirmMarkPaid(context, p),
-                      child: Text('Mark Paid ₹${fmt.format(p.amount)}'),
+                      onPressed: () => _recordPayment(context, p),
+                      child: Text('Record ₹${fmt.format(p.remaining)}'),
                     ),
             ),
           ),
@@ -100,26 +129,70 @@ class _FeeCollectionViewState extends State<FeeCollectionView> {
     );
   }
 
-  void _confirmMarkPaid(BuildContext context, PaymentModel p) {
+  void _recordPayment(BuildContext context, PaymentModel p) {
+    final fmt = NumberFormat.decimalPattern('en_IN');
+    final controller = TextEditingController(text: '${p.remaining}');
     showDialog(
       context: context,
-      builder: (_) => AlertDialog(
-        backgroundColor: AppColors.surface,
-        title: const Text('Record payment'),
-        content: Text('${p.tenantName} (${p.roomNo}) — ₹${p.amount}?'),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel')),
-          ElevatedButton(
-            onPressed: () {
-              context.read<FeeController>().markPaid(p);
-              Navigator.pop(context);
-            },
-            child: const Text('Confirm Paid'),
+      builder: (dialogContext) {
+        return AlertDialog(
+          backgroundColor: AppColors.surface,
+          title: const Text('Record payment'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('${p.tenantName} (${p.roomNo})'),
+              const SizedBox(height: 12),
+              Text('Rent: ₹${fmt.format(p.amount)}'),
+              Text('Already paid: ₹${fmt.format(p.paidAmount)}'),
+              Text(
+                'Yet to pay: ₹${fmt.format(p.remaining)}',
+                style: const TextStyle(
+                    color: AppColors.pending, fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: controller,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(
+                  labelText: 'Amount received now',
+                  prefixText: '₹ ',
+                ),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Use a smaller amount if UPI bank limits block the full rent. '
+                'EARLY10 (10% off shop products, not rent) applies only when '
+                'the full rent is cleared on or before the 5th.',
+                style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
+              ),
+            ],
           ),
-        ],
-      ),
-    );
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.pop(dialogContext),
+                child: const Text('Cancel')),
+            OutlinedButton(
+              onPressed: () {
+                context.read<FeeController>().markPaid(p);
+                Navigator.pop(dialogContext);
+              },
+              child: const Text('Mark fully paid'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                final raw =
+                    int.tryParse(controller.text.replaceAll(',', '').trim());
+                if (raw == null || raw <= 0) return;
+                context.read<FeeController>().recordPayment(p, raw);
+                Navigator.pop(dialogContext);
+              },
+              child: const Text('Save'),
+            ),
+          ],
+        );
+      },
+    ).whenComplete(controller.dispose);
   }
 }

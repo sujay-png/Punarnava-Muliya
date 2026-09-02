@@ -18,9 +18,10 @@ class DashboardView extends StatelessWidget {
     final maintenance = context.watch<MaintenanceController>();
 
     final rows = fees.billingRows(tenants.tenants);
-    final pendingAmount = rows
+    final pending = rows
         .where((p) => p.status != PaymentStatus.paid)
-        .fold(0, (s, p) => s + p.amount);
+        .fold(0, (s, p) => s + p.remaining);
+    final collected = rows.fold(0, (s, p) => s + p.paidAmount);
     final monthName = DateFormat('MMMM yyyy').format(DateTime.now());
 
     return ListView(
@@ -50,13 +51,13 @@ class DashboardView extends StatelessWidget {
             ),
             StatCard(
               label: 'Collected',
-              value: '₹${NumberFormat.decimalPattern('en_IN').format(fees.collected)}',
+              value: '₹${NumberFormat.decimalPattern('en_IN').format(collected)}',
               subtitle: 'this month',
               valueColor: AppColors.paid,
             ),
             StatCard(
               label: 'Pending / due',
-              value: '₹${NumberFormat.decimalPattern('en_IN').format(pendingAmount)}',
+              value: '₹${NumberFormat.decimalPattern('en_IN').format(pending)}',
               subtitle: 'this month',
               valueColor: AppColors.pending,
             ),
@@ -86,8 +87,10 @@ class DashboardView extends StatelessWidget {
                 ),
                 const SizedBox(height: 8),
                 const Text(
-                  'Members paying before the 5th get code '
-                  '${ReminderConfig.earlyBirdCoupon} for 10% off.',
+                  'Pay rent in full on or before the 5th to get code '
+                  '${ReminderConfig.earlyBirdCoupon} for '
+                  '${ReminderConfig.productDiscountPercent}% off shop products '
+                  '(not rent). Offer is sent on the 1st, 3rd and 5th.',
                   style: TextStyle(color: AppColors.accent),
                 ),
               ],

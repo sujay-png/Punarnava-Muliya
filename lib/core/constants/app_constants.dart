@@ -17,6 +17,7 @@ class TenantStatus {
 
 class PaymentStatus {
   static const paid = 'paid';
+  static const partial = 'partial';
   static const pending = 'pending';
   static const overdue = 'overdue';
 }
@@ -29,5 +30,8 @@ class MaintenanceStatus {
 
 class ReminderConfig {
   static const reminderDays = [1, 3, 5, 7, 10, 15];
+  static const productOfferDays = [1, 3, 5];
+  static const earlyBirdLastDay = 5;
   static const earlyBirdCoupon = 'EARLY10';
+  static const productDiscountPercent = 10;
 }
