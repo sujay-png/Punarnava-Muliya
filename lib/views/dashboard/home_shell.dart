@@ -22,11 +22,11 @@ class _HomeShellState extends State<HomeShell> {
   final double _mobileBreakpoint = 600;
   bool _isexpanded = false;
   static final _pages = [
-    DashboardView(),
-    TenantsView(),
-    FeeCollectionView(),
-    MaintenanceView(),
-    NoticeBoardView(),
+    const DashboardView(),
+    const TenantsView(),
+    const FeeCollectionView(),
+    const MaintenanceView(),
+    const NoticeBoardView(),
   ];
 
   @override

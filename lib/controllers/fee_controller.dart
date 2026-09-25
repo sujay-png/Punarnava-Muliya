@@ -45,7 +45,23 @@ class FeeController extends ChangeNotifier {
   /// Tenants with no payment doc yet are 'pending' (or 'overdue' after the 15th).
   List<PaymentModel> billingRows(List<TenantModel> tenants) {
     final byTenant = {for (final p in _payments) p.tenantId: p};
-    final overdueNow = DateTime.now().day > ReminderConfig.reminderDays.last;
+    final now = DateTime.now();
+    final overdueNow = now.day > ReminderConfig.reminderDays.last;
+
+    int calculateFine() {
+      try {
+        final mDate = DateFormat('yyyy-MM').parse(monthKey);
+        final dueDate = DateTime(mDate.year, mDate.month, 10);
+        final currentDate = DateTime(now.year, now.month, now.day);
+        final diff = currentDate.difference(dueDate).inDays;
+        return diff > 0 ? diff * 100 : 0;
+      } catch (e) {
+        return 0;
+      }
+    }
+
+    final fine = calculateFine();
+
     return tenants
         .where((t) => t.status != TenantStatus.vacated)
         .map((t) =>
@@ -56,7 +72,7 @@ class FeeController extends ChangeNotifier {
               tenantName: t.name,
               roomNo: t.roomNo,
               monthKey: monthKey,
-              amount: t.monthlyRent,
+              amount: t.monthlyRent + fine,
               status:
                   overdueNow ? PaymentStatus.overdue : PaymentStatus.pending,
             ))

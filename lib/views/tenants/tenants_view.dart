@@ -1,7 +1,6 @@
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:pgmaster/models/tenant_model.dart';
 import 'package:pgmaster/views/tenants/add_tenant_form.dart';
 import 'package:provider/provider.dart';
 import '../../controllers/tenant_controller.dart';

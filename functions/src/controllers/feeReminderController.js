@@ -22,10 +22,9 @@ const {
 
 /** Per-tenant UPI deep link, amount pre-filled. Opens GPay/PhonePe/Paytm on tap. */
 function buildUpiLink(tenant, ctx) {
-  // Pre-apply the 10% early-bird discount in the link before the 5th:
-  const amount = ctx.earlyBird
-    ? Math.round(tenant.monthlyRent * (1 - EARLY_BIRD_DISCOUNT_PERCENT / 100))
-    : tenant.monthlyRent;
+  const diff = ctx.date.getDate() - 10;
+  const fine = diff > 0 ? diff * 100 : 0;
+  const amount = tenant.monthlyRent + fine;
 
   const params = new URLSearchParams({
     pa: process.env.UPI_ID,                       // gcmulia@kbl
@@ -40,21 +39,28 @@ function buildUpiLink(tenant, ctx) {
 
 /** Build the template variables for one tenant. Order must match {{1}}..{{n}}. */
 function buildComponents(tenant, ctx) {
+  const diff = ctx.date.getDate() - 10;
+  const fine = diff > 0 ? diff * 100 : 0;
+  const totalAmount = tenant.monthlyRent + fine;
+  
+  // If there's a fine, show it in the amount field (or we just include it in the text).
+  const amountText = fine > 0 ? `₹${totalAmount} (Includes ₹${fine} late fine)` : `₹${totalAmount}`;
+
   const base = {
     body_1: { type: "text", value: tenant.name },                    // {{1}} name
     body_2: { type: "text", value: monthLabel(ctx.date) },           // {{2}} month
-    body_3: { type: "text", value: `₹${tenant.monthlyRent}` },       // {{3}} amount
+    body_3: { type: "text", value: amountText },                     // {{3}} amount
     body_4: { type: "text", value: buildUpiLink(tenant, ctx) },      // {{4}} UPI link
   };
   if (ctx.earlyBird) {
-    base.body_5 = { type: "text", value: EARLY_BIRD_COUPON };                 // {{5}}
-    base.body_6 = { type: "text", value: `${EARLY_BIRD_DISCOUNT_PERCENT}%` }; // {{6}}
+    base.body_5 = { type: "text", value: "EARLY10" };                 // {{5}}
+    base.body_6 = { type: "text", value: "https://kshithija.in" };    // {{6}}
   }
   return base;
 }
 
 async function runReminderCycle(day, monthKey, date) {
-  const earlyBird = day < EARLY_BIRD_LAST_DAY; // 1st & 3rd → EARLY10 offer
+  const earlyBird = day <= EARLY_BIRD_LAST_DAY; // 1st, 3rd, 5th -> early offer
   const templateName = earlyBird
     ? process.env.TEMPLATE_FEE_REMINDER_EARLY
     : process.env.TEMPLATE_FEE_REMINDER;
@@ -125,7 +131,7 @@ exports.retryFailedReminders = onSchedule(
     if (!failures.length) return;
     logger.info(`Retrying ${failures.length} failed reminders`);
 
-    const earlyBird = day < EARLY_BIRD_LAST_DAY;
+    const earlyBird = day <= EARLY_BIRD_LAST_DAY;
     const templateName = earlyBird
       ? process.env.TEMPLATE_FEE_REMINDER_EARLY
       : process.env.TEMPLATE_FEE_REMINDER;
