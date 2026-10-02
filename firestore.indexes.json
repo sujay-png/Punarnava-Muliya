@@ -25,6 +25,30 @@
         { "fieldPath": "status", "order": "ASCENDING" },
         { "fieldPath": "createdAt", "order": "DESCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "stays",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "tenantId", "order": "ASCENDING" },
+        { "fieldPath": "joinDate", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "deposits",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "stayId", "order": "ASCENDING" },
+        { "fieldPath": "paidOn", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "statusHistory",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "stayId", "order": "ASCENDING" },
+        { "fieldPath": "changedAt", "order": "DESCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []
