@@ -86,7 +86,7 @@ export function TenantDetail({ tenantId }: { tenantId: string }) {
     activeStay = {
       id: `legacy_stay_${tenant.id}`,
       tenantId: tenant.id!,
-      roomNumber: tenant.roomNo,
+      roomNumber: tenant.roomNo || "",
       joinDate: tenant.joinDate,
       monthlyRent: tenant.monthlyRent,
       status: tenant.status === "active" ? "Active" : tenant.status === "notice" ? "OnNotice" : "Vacated",
@@ -138,7 +138,7 @@ export function TenantDetail({ tenantId }: { tenantId: string }) {
             
             <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
               <span className="flex items-center">
-                <span className="font-semibold text-foreground mr-1.5">Room {activeStay?.roomNumber || tenant.roomNo}</span>
+                <span className="font-semibold text-foreground mr-1.5">Room {activeStay?.roomNumber || tenant.roomNo || "N/A"}</span>
               </span>
               <span className="flex items-center">
                 <Phone className="mr-1.5 h-3.5 w-3.5" /> {tenant.phone}

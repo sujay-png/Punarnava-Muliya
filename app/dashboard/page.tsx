@@ -39,7 +39,7 @@ export default function DashboardPage() {
           const activeStay: Stay = {
             id: `legacy_stay_${tenant.id}`,
             tenantId: tenant.id!,
-            roomNumber: tenant.roomNo,
+            roomNumber: tenant.roomNo || "",
             joinDate: tenant.joinDate,
             monthlyRent: tenant.monthlyRent,
             status: tenant.status === "active" ? "Active" : "OnNotice",
@@ -98,7 +98,7 @@ export default function DashboardPage() {
         <p className="text-muted-foreground mt-1 text-base">Overview of your PG status and financial activities.</p>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-4 md:gap-6 lg:grid-cols-4">
         <StatCard 
           title="Active Tenants" 
           value={activeTenants} 
@@ -129,8 +129,8 @@ export default function DashboardPage() {
         />
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-7">
-        <Card className="col-span-4 border-border shadow-sm flex flex-col">
+      <div className="grid gap-6 lg:grid-cols-7">
+        <Card className="lg:col-span-4 border-border shadow-sm flex flex-col">
           <CardHeader className="flex flex-row items-center justify-between">
             <div>
               <CardTitle className="text-lg">Recent Transactions</CardTitle>
@@ -187,7 +187,7 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-        <Card className="col-span-3 border-border shadow-sm flex flex-col">
+        <Card className="lg:col-span-3 border-border shadow-sm flex flex-col">
           <CardHeader>
             <CardTitle className="text-lg">Automated Schedule</CardTitle>
             <CardDescription>Monthly billing lifecycle</CardDescription>
@@ -268,7 +268,7 @@ function StatCard({
         {value === null ? (
           <Skeleton className="h-8 w-24 mt-1" />
         ) : (
-          <div className="text-3xl font-bold tracking-tight">{value}</div>
+          <div className="text-2xl md:text-3xl font-bold tracking-tight">{value}</div>
         )}
         {description && (
           <p className="text-xs text-muted-foreground mt-2 font-medium">{description}</p>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -57,6 +57,21 @@ export function TenantForm({ initialData, initialDeposit }: TenantFormProps) {
       setPhotoPreview(URL.createObjectURL(file));
     }
   };
+
+  const dobValue = watch("dob");
+  useEffect(() => {
+    if (dobValue && dobValue instanceof Date && !isNaN(dobValue.getTime())) {
+      const today = new Date();
+      let calculatedAge = today.getFullYear() - dobValue.getFullYear();
+      const m = today.getMonth() - dobValue.getMonth();
+      if (m < 0 || (m === 0 && today.getDate() < dobValue.getDate())) {
+        calculatedAge--;
+      }
+      if (calculatedAge >= 0) {
+        setValue("age", calculatedAge, { shouldValidate: true, shouldDirty: true });
+      }
+    }
+  }, [dobValue, setValue]);
 
   const onSubmit = async (data: Tenant) => {
     try {
@@ -137,7 +152,7 @@ export function TenantForm({ initialData, initialDeposit }: TenantFormProps) {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="roomNo">Room Number <span className="text-destructive">*</span></Label>
+            <Label htmlFor="roomNo">Room Number</Label>
             <Input id="roomNo" placeholder="A-101" {...register("roomNo")} />
             <ErrorMsg field="roomNo" />
           </div>

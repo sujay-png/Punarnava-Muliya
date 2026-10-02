@@ -38,7 +38,7 @@ export function PastMembersList({ tenants }: { tenants: Tenant[] | null }) {
   const filteredTenants = tenants?.filter((t) => {
     const matchesSearch = t.name.toLowerCase().includes(search.toLowerCase()) || 
                           t.phone.includes(search) || 
-                          t.roomNo.toLowerCase().includes(search.toLowerCase());
+                          (t.roomNo || "").toLowerCase().includes(search.toLowerCase());
     
     // We don't have vacateDate directly on tenant schema, it's on Stay. 
     // We can filter by joined year as a fallback or if we had vacateDate.

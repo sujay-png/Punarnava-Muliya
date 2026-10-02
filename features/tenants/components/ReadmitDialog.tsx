@@ -40,8 +40,8 @@ export function ReadmitDialog({ open, onOpenChange, tenant }: ReadmitDialogProps
   const [depositMode, setDepositMode] = useState<"cash" | "upi" | "bank">("upi");
 
   const handleReadmit = async () => {
-    if (!roomNo || !monthlyRent) {
-      toast.error("Room number and monthly rent are required.");
+    if (!monthlyRent) {
+      toast.error("Monthly rent is required.");
       return;
     }
 
@@ -166,7 +166,7 @@ export function ReadmitDialog({ open, onOpenChange, tenant }: ReadmitDialogProps
 
         <DialogFooter className="mt-6 border-t border-border pt-4">
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button variant="default" onClick={handleReadmit} disabled={loading || !roomNo || !monthlyRent}>
+          <Button variant="default" onClick={handleReadmit} disabled={loading || !monthlyRent}>
             {loading ? "Re-admitting..." : "Confirm Re-admit"}
           </Button>
         </DialogFooter>

@@ -7,18 +7,41 @@ export type TenantStatus = z.infer<typeof TenantStatusEnum>;
 export const TenantSchema = z.object({
   id: z.string().optional(),
   name: z.string().min(1, "Full name is required"),
-  roomNo: z.string().min(1, "Room number is required"),
+  roomNo: z.string().optional().or(z.literal("")),
   phone: z.string().regex(/^\d{10}$/, "Phone must be 10 digits"),
   joinDate: z.date(),
-  monthlyRent: z.number().min(1, "Monthly rent must be greater than 0"),
-  idProofType: z.enum(["Aadhaar", "PAN", "Other"]),
+  monthlyRent: z.preprocess(
+    (val) => {
+      if (val === "" || Number.isNaN(val)) return 0;
+      if (typeof val === "string") return parseFloat(val) || 0;
+      return val;
+    },
+    z.number().min(1, "Monthly rent must be greater than 0")
+  ),
+  idProofType: z.preprocess(
+    (val) => {
+      if (typeof val !== "string") return val;
+      const v = val.toLowerCase();
+      if (v === "aadhaar" || v === "aadhar") return "Aadhaar";
+      if (v === "pan") return "PAN";
+      return "Other";
+    },
+    z.enum(["Aadhaar", "PAN", "Other"])
+  ),
   idNumber: z.string().min(1, "ID number is required"),
   emergencyContact: z.string().optional(),
   status: TenantStatusEnum.default("active"),
   expectedVacateDate: z.date().nullable().optional(),
   email: z.string().email("Invalid email").optional().or(z.literal("")),
   dob: z.date().nullable().optional(),
-  age: z.number().nullable().optional(),
+  age: z.preprocess(
+    (val) => {
+      if (val === "" || Number.isNaN(val)) return null;
+      if (typeof val === "string") return parseInt(val, 10) || null;
+      return val;
+    },
+    z.number().nullable().optional()
+  ),
   permanentAddress: z.string().optional(),
   nationality: z.string().optional(),
   fatherName: z.string().optional(),
@@ -27,16 +50,42 @@ export const TenantSchema = z.object({
   motherPhone: z.string().optional(),
   guardianName: z.string().optional(),
   guardianPhone: z.string().optional(),
-  maritalStatus: z.enum(["Married", "Unmarried"]),
+  maritalStatus: z.preprocess(
+    (val) => {
+      if (typeof val !== "string") return val;
+      const v = val.toLowerCase();
+      if (v === "married") return "Married";
+      return "Unmarried";
+    },
+    z.enum(["Married", "Unmarried"])
+  ),
   companyName: z.string().optional(),
   companyAddress: z.string().optional(),
   companyPhone: z.string().optional(),
-  occupationStatus: z.enum(["Student", "Working Professional", "Business Owner"]),
+  occupationStatus: z.preprocess(
+    (val) => {
+      if (typeof val !== "string") return val;
+      const v = val.toLowerCase();
+      if (v === "student") return "Student";
+      if (v === "working professional" || v === "professional" || v === "working") return "Working Professional";
+      if (v === "business owner" || v === "business") return "Business Owner";
+      return "Student"; // Default fallback for old data
+    },
+    z.enum(["Student", "Working Professional", "Business Owner"])
+  ),
   appointmentLetterRef: z.string().optional(),
   expectedStay: z.string().optional(),
   vehicleModel: z.string().optional(),
   vehicleNumber: z.string().optional(),
-  bloodGroup: z.enum(["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"]),
+  bloodGroup: z.preprocess(
+    (val) => {
+      if (typeof val !== "string") return val;
+      const v = val.toUpperCase();
+      if (["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"].includes(v)) return v;
+      return "O+"; // Fallback
+    },
+    z.enum(["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"])
+  ),
   healthCondition: z.string().optional(),
   signature: z.string().min(1, "Signature is required"),
   declarationDate: z.date().nullable().optional(),

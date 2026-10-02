@@ -90,7 +90,7 @@ export default function TenantsPage() {
   const filteredTenants = currentTenants?.filter(
     (t) =>
       t.name.toLowerCase().includes(search.toLowerCase()) ||
-      t.roomNo.toLowerCase().includes(search.toLowerCase())
+      (t.roomNo || "").toLowerCase().includes(search.toLowerCase())
   );
 
   const handleExportCSV = () => {

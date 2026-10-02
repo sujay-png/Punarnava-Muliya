@@ -67,7 +67,7 @@ export default function FeesPage() {
           const activeStay: Stay = {
             id: `legacy_stay_${t.id}`,
             tenantId: t.id!,
-            roomNumber: t.roomNo,
+            roomNumber: t.roomNo || "",
             joinDate: t.joinDate,
             monthlyRent: t.monthlyRent,
             status: t.status === "active" ? "Active" : "OnNotice",
@@ -81,7 +81,7 @@ export default function FeesPage() {
             return {
               tenantId: t.id!,
               tenantName: t.name,
-              roomNo: t.roomNo,
+              roomNo: t.roomNo || "",
               baseRent: t.monthlyRent,
               fine: payment.fine !== undefined ? payment.fine : ((payment.amount || 0) - t.monthlyRent),
               totalAmount: payment.amountPaid || payment.amount || 0,
@@ -98,7 +98,7 @@ export default function FeesPage() {
           return {
             tenantId: t.id!,
             tenantName: t.name,
-            roomNo: t.roomNo,
+            roomNo: t.roomNo || "",
             baseRent: t.monthlyRent,
             fine,
             totalAmount,
