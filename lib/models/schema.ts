@@ -55,9 +55,10 @@ export const TenantSchema = z.object({
       if (typeof val !== "string") return val;
       const v = val.toLowerCase();
       if (v === "married") return "Married";
+      if (v === "prefer not to say") return "Prefer not to say";
       return "Unmarried";
     },
-    z.enum(["Married", "Unmarried"])
+    z.enum(["Married", "Unmarried", "Prefer not to say"])
   ),
   companyName: z.string().optional(),
   companyAddress: z.string().optional(),
@@ -69,9 +70,10 @@ export const TenantSchema = z.object({
       if (v === "student") return "Student";
       if (v === "working professional" || v === "professional" || v === "working") return "Working Professional";
       if (v === "business owner" || v === "business") return "Business Owner";
+      if (v === "other") return "Other";
       return "Student"; // Default fallback for old data
     },
-    z.enum(["Student", "Working Professional", "Business Owner"])
+    z.enum(["Student", "Working Professional", "Business Owner", "Other"])
   ),
   appointmentLetterRef: z.string().optional(),
   expectedStay: z.string().optional(),

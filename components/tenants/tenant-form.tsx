@@ -252,6 +252,7 @@ export function TenantForm({ initialData, initialDeposit }: TenantFormProps) {
               <SelectContent>
                 <SelectItem value="Unmarried">Unmarried</SelectItem>
                 <SelectItem value="Married">Married</SelectItem>
+                <SelectItem value="Prefer not to say">Prefer not to say</SelectItem>
               </SelectContent>
             </Select>
             <ErrorMsg field="maritalStatus" />
@@ -279,6 +280,7 @@ export function TenantForm({ initialData, initialDeposit }: TenantFormProps) {
                 <SelectItem value="Student">Student</SelectItem>
                 <SelectItem value="Working Professional">Working Professional</SelectItem>
                 <SelectItem value="Business Owner">Business Owner</SelectItem>
+                <SelectItem value="Other">Other</SelectItem>
               </SelectContent>
             </Select>
             <ErrorMsg field="occupationStatus" />
