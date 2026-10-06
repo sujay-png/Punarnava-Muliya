@@ -29,11 +29,13 @@ function buildUpiLink(tenant, ctx) {
   const params = new URLSearchParams({
     pa: process.env.UPI_ID,                       // gcmulia@kbl
     pn: process.env.UPI_PAYEE_NAME || "PG Rent",
-    am: String(amount),
+    am: amount.toFixed(2),                        // Add .00 for strict UPI apps
     cu: "INR",
     tn: `Rent ${monthLabel(ctx.date)} ${tenant.roomNo || ""}`.trim(),
   });
-  return `upi://pay?${params.toString()}`;
+  
+  // Replace '+' with '%20' because some UPI apps fail to parse '+' as spaces
+  return `upi://pay?${params.toString().replace(/\+/g, '%20')}`;
 }
 
 
