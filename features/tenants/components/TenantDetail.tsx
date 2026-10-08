@@ -121,35 +121,35 @@ export function TenantDetail({ tenantId }: { tenantId: string }) {
       </div>
 
       {/* Header Profile Card */}
-      <div className="bg-card rounded-xl border border-border p-6 flex flex-col md:flex-row gap-6 items-start md:items-center justify-between">
-        <div className="flex items-center gap-6">
-          <Avatar className="h-24 w-24 border-4 border-background shadow-sm">
+      <div className="bg-card rounded-xl border border-border p-4 sm:p-6 flex flex-col lg:flex-row gap-4 sm:gap-6 items-start lg:items-center justify-between">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-6 w-full lg:w-auto min-w-0">
+          <Avatar className="h-20 w-20 sm:h-24 sm:w-24 border-4 border-background shadow-sm shrink-0">
             <AvatarImage src={tenant.photoUrl || undefined} alt={tenant.name} />
-            <AvatarFallback className="text-2xl bg-primary/10 text-primary">
+            <AvatarFallback className="text-xl sm:text-2xl bg-primary/10 text-primary">
               {tenant.name.substring(0, 2).toUpperCase()}
             </AvatarFallback>
           </Avatar>
           
-          <div className="space-y-2">
-            <div className="flex items-center gap-3">
-              <h1 className="text-2xl font-bold">{tenant.name}</h1>
+          <div className="space-y-2 flex-1 min-w-0 w-full">
+            <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+              <h1 className="text-xl sm:text-2xl font-bold truncate max-w-full">{tenant.name}</h1>
               {activeStay && <StatusBadge status={activeStay.status} expectedVacateDate={activeStay.expectedVacateDate} />}
             </div>
             
-            <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
-              <span className="flex items-center">
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-muted-foreground">
+              <span className="flex items-center whitespace-nowrap">
                 <span className="font-semibold text-foreground mr-1.5">Room {activeStay?.roomNumber || tenant.roomNo || "N/A"}</span>
               </span>
-              <span className="flex items-center">
+              <span className="flex items-center whitespace-nowrap">
                 <Phone className="mr-1.5 h-3.5 w-3.5" /> {tenant.phone}
               </span>
               {activeStay && (
-                <span className="flex items-center">
+                <span className="flex items-center whitespace-nowrap">
                   <Calendar className="mr-1.5 h-3.5 w-3.5" /> Joined {format(activeStay.joinDate, "dd MMM yyyy")}
                 </span>
               )}
               {activeStay && (
-                <span className="flex items-center">
+                <span className="flex items-center whitespace-nowrap">
                   <Clock className="mr-1.5 h-3.5 w-3.5" /> {stayDuration}
                 </span>
               )}
@@ -158,7 +158,7 @@ export function TenantDetail({ tenantId }: { tenantId: string }) {
         </div>
 
         {/* Quick Actions */}
-        <div className="flex flex-wrap gap-2 w-full md:w-auto">
+        <div className="flex flex-wrap gap-2 w-full lg:w-auto shrink-0">
           {tenant.status === "vacated" ? (
             <Button variant="default" className="flex-1 md:flex-none" onClick={() => setReadmitDialogOpen(true)}>
               <Users className="mr-2 h-4 w-4" /> Re-admit Tenant
@@ -200,7 +200,7 @@ export function TenantDetail({ tenantId }: { tenantId: string }) {
                 <h3 className="font-semibold text-lg flex items-center gap-2 border-b border-border pb-3">
                   <User className="h-5 w-5 text-primary" /> Personal Details
                 </h3>
-                <div className="grid grid-cols-2 gap-4 text-sm">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
                   <div>
                     <span className="text-muted-foreground block mb-1">Phone Number</span>
                     <span className="font-medium">{tenant.phone}</span>
@@ -229,7 +229,7 @@ export function TenantDetail({ tenantId }: { tenantId: string }) {
                 <h3 className="font-semibold text-lg flex items-center gap-2 border-b border-border pb-3">
                   <Users className="h-5 w-5 text-primary" /> Family & Emergency
                 </h3>
-                <div className="grid grid-cols-2 gap-4 text-sm">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
                   <div>
                     <span className="text-muted-foreground block mb-1">Father's Name</span>
                     <span className="font-medium">{tenant.fatherName || "N/A"}</span>
@@ -250,7 +250,7 @@ export function TenantDetail({ tenantId }: { tenantId: string }) {
                 <h3 className="font-semibold text-lg flex items-center gap-2 border-b border-border pb-3">
                   <Briefcase className="h-5 w-5 text-primary" /> Occupation Details
                 </h3>
-                <div className="grid grid-cols-2 gap-4 text-sm">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
                   <div>
                     <span className="text-muted-foreground block mb-1">Status</span>
                     <span className="font-medium">{tenant.occupationStatus || "N/A"}</span>
@@ -271,7 +271,7 @@ export function TenantDetail({ tenantId }: { tenantId: string }) {
                 <h3 className="font-semibold text-lg flex items-center gap-2 border-b border-border pb-3">
                   <FileText className="h-5 w-5 text-primary" /> Identity & Vehicle
                 </h3>
-                <div className="grid grid-cols-2 gap-4 text-sm">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
                   <div>
                     <span className="text-muted-foreground block mb-1">ID Type</span>
                     <span className="font-medium">{tenant.idProofType || "N/A"}</span>
