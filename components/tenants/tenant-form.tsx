@@ -172,6 +172,20 @@ export function TenantForm({ initialData, initialDeposit }: TenantFormProps) {
             <ErrorMsg field="joinDate" />
           </div>
 
+          <div className="space-y-2">
+            <Label htmlFor="dueDay">Fee Due Day of Month</Label>
+            <Input 
+              id="dueDay" 
+              type="number" 
+              min={1} 
+              max={28} 
+              placeholder="10 (Default)" 
+              {...register("dueDay", { valueAsNumber: true })} 
+            />
+            <p className="text-[11px] text-muted-foreground">Optional. Fine will apply dynamically after this day (e.g. 18th).</p>
+            <ErrorMsg field="dueDay" />
+          </div>
+
         </CardContent>
       </Card>
 

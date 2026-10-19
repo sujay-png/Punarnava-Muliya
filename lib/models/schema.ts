@@ -18,6 +18,14 @@ export const TenantSchema = z.object({
     },
     z.number().min(1, "Monthly rent must be greater than 0")
   ),
+  dueDay: z.preprocess(
+    (val) => {
+      if (val === "" || val === null || val === undefined || Number.isNaN(val)) return null;
+      if (typeof val === "string") return parseInt(val, 10) || null;
+      return val;
+    },
+    z.number().min(1, "Due day must be between 1 and 28").max(28, "Due day must be between 1 and 28").nullable().optional()
+  ),
   idProofType: z.preprocess(
     (val) => {
       if (typeof val !== "string") return val;

@@ -15,6 +15,8 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Table,
   TableBody,
@@ -37,7 +39,9 @@ type BillingRow = {
   tenantName: string;
   roomNo: string;
   baseRent: number;
+  dueDay: number;
   fine: number;
+  autoCalculatedFine: number;
   totalAmount: number;
   status: "Paid" | "Pending" | "Overdue" | "Partial" | "Upcoming" | "N/A";
   payment?: Payment;
@@ -47,8 +51,18 @@ type BillingRow = {
 export default function FeesPage() {
   const [activeTab, setActiveTab] = useState("all");
   const [rows, setRows] = useState<BillingRow[] | null>(null);
+  
+  // Mark Paid dialog state
   const [selectedRow, setSelectedRow] = useState<BillingRow | null>(null);
+  const [fineInput, setFineInput] = useState<string>("0");
+  const [paidDate, setPaidDate] = useState<string>("");
+  const [paymentMode, setPaymentMode] = useState<"upi" | "cash" | "bank">("upi");
   const [isMarkingPaid, setIsMarkingPaid] = useState(false);
+
+  // Adjust Fine dialog state
+  const [adjustingRow, setAdjustingRow] = useState<BillingRow | null>(null);
+  const [customFineAmount, setCustomFineAmount] = useState<string>("0");
+  const [isSavingFine, setIsSavingFine] = useState(false);
 
   // Month Key: "YYYY-MM"
   const now = new Date();
@@ -63,6 +77,7 @@ export default function FeesPage() {
       const unsubscribePayments = paymentsApi.watchAllPaymentsForMonth(currentMonthKey, (payments) => {
         
         const generatedRows: BillingRow[] = activeTenants.map((t) => {
+          const tenantDueDay = t.dueDay || 10;
           // Synthesize a legacy stay for status calculation
           const activeStay: Stay = {
             id: `legacy_stay_${t.id}`,
@@ -71,20 +86,39 @@ export default function FeesPage() {
             joinDate: t.joinDate,
             monthlyRent: t.monthlyRent,
             status: t.status === "active" ? "Active" : "OnNotice",
+            dueDay: tenantDueDay,
           };
 
-          const status = calculatePaymentStatus(activeStay, currentMonthKey, payments);
+          const status = calculatePaymentStatus(activeStay, currentMonthKey, payments, now, tenantDueDay);
           const payment = payments.find((p) => p.tenantId === t.id);
+          const autoFine = calculateFine(currentMonthKey, now, null, tenantDueDay);
           
           if (payment) {
-            // Found existing payment (either Paid, Partial, or marked as Pending/Overdue)
+            const isPaid = payment.status === "Paid";
+            let fine = 0;
+            if (payment.fine !== undefined) {
+              fine = payment.fine;
+            } else if (isPaid) {
+              // Paid payment without explicit fine field: check actual payment date against tenant's due date
+              const paidDate = payment.paidOn || payment.paidAt;
+              fine = paidDate ? calculateFine(currentMonthKey, paidDate, null, tenantDueDay) : 0;
+            } else {
+              fine = autoFine;
+            }
+
+            const totalAmount = isPaid
+              ? (payment.amountPaid || payment.amount || (t.monthlyRent + fine))
+              : (t.monthlyRent + fine);
+
             return {
               tenantId: t.id!,
               tenantName: t.name,
               roomNo: t.roomNo || "",
               baseRent: t.monthlyRent,
-              fine: payment.fine !== undefined ? payment.fine : ((payment.amount || 0) - t.monthlyRent),
-              totalAmount: payment.amountPaid || payment.amount || 0,
+              dueDay: tenantDueDay,
+              fine,
+              autoCalculatedFine: autoFine,
+              totalAmount,
               status,
               payment,
               stay: activeStay
@@ -92,7 +126,7 @@ export default function FeesPage() {
           }
 
           // Not paid yet, calculate dynamic fine and status
-          const fine = calculateFine(currentMonthKey, new Date());
+          const fine = autoFine;
           const totalAmount = t.monthlyRent + fine;
 
           return {
@@ -100,7 +134,9 @@ export default function FeesPage() {
             tenantName: t.name,
             roomNo: t.roomNo || "",
             baseRent: t.monthlyRent,
+            dueDay: tenantDueDay,
             fine,
+            autoCalculatedFine: autoFine,
             totalAmount,
             status,
             stay: activeStay
@@ -118,10 +154,55 @@ export default function FeesPage() {
     return () => unsubscribeTenants();
   }, [currentMonthKey]);
 
+  const handleOpenMarkPaid = (row: BillingRow) => {
+    setSelectedRow(row);
+    setFineInput(row.fine.toString());
+    setPaidDate(format(new Date(), "yyyy-MM-dd"));
+    setPaymentMode("upi");
+  };
+
+  const handleOpenAdjustFine = (row: BillingRow) => {
+    setAdjustingRow(row);
+    setCustomFineAmount(row.fine.toString());
+  };
+
+  const handleSaveAdjustFine = async () => {
+    if (!adjustingRow) return;
+    setIsSavingFine(true);
+    try {
+      const numFine = customFineAmount === "" ? 0 : Math.max(0, parseInt(customFineAmount, 10) || 0);
+      await paymentsApi.updateFine({
+        tenantId: adjustingRow.tenantId,
+        monthKey: currentMonthKey,
+        fine: numFine,
+        fineWaived: numFine === 0,
+        tenantName: adjustingRow.tenantName,
+        roomNo: adjustingRow.roomNo,
+        rent: adjustingRow.baseRent,
+        reason: numFine === 0 ? "Waived by admin" : `Adjusted to ₹${numFine}`,
+      });
+      toast.success(`Fine set to ₹${numFine.toLocaleString("en-IN")} for ${adjustingRow.tenantName}`);
+      setAdjustingRow(null);
+    } catch {
+      toast.error("Failed to update fine");
+    } finally {
+      setIsSavingFine(false);
+    }
+  };
+
   const handleMarkPaid = async () => {
     if (!selectedRow) return;
     setIsMarkingPaid(true);
     try {
+      const numFine = fineInput === "" ? 0 : Math.max(0, parseInt(fineInput, 10) || 0);
+      const totalAmount = selectedRow.baseRent + numFine;
+
+      let paidDateTime = new Date();
+      if (paidDate) {
+        const [year, month, day] = paidDate.split("-").map(Number);
+        paidDateTime = new Date(year, month - 1, day, 12, 0, 0);
+      }
+
       const paymentData: Partial<Payment> = {
         tenantId: selectedRow.tenantId,
         tenantName: selectedRow.tenantName,
@@ -129,12 +210,17 @@ export default function FeesPage() {
         monthKey: currentMonthKey,
         month: currentMonthKey,
         rent: selectedRow.baseRent,
-        fine: selectedRow.fine,
-        amountPaid: selectedRow.totalAmount, // amount + fine baked in
+        fine: numFine,
+        fineWaived: numFine === 0 && selectedRow.autoCalculatedFine > 0,
+        amountPaid: totalAmount,
+        amount: totalAmount,
+        mode: paymentMode,
+        paidOn: paidDateTime,
+        paidAt: paidDateTime,
         status: "Paid",
       };
       await paymentsApi.markPaid(paymentData);
-      toast.success(`Marked ₹${selectedRow.totalAmount.toLocaleString("en-IN")} paid for ${selectedRow.tenantName}`);
+      toast.success(`Marked ₹${totalAmount.toLocaleString("en-IN")} paid for ${selectedRow.tenantName}`);
       setSelectedRow(null);
     } catch (error) {
       toast.error("Failed to mark as paid");
@@ -142,6 +228,18 @@ export default function FeesPage() {
       setIsMarkingPaid(false);
     }
   };
+
+  // Dynamic calculations for Adjust Fine dialog
+  const adjustDefaultFine = adjustingRow?.autoCalculatedFine || 0;
+  const adjustFineNum = customFineAmount === "" ? 0 : Math.max(0, parseInt(customFineAmount, 10) || 0);
+  const adjustWaived = Math.max(0, adjustDefaultFine - adjustFineNum);
+  const adjustTotal = (adjustingRow?.baseRent || 0) + adjustFineNum;
+
+  // Dynamic calculations for Mark Paid dialog
+  const markPaidDefaultFine = selectedRow?.autoCalculatedFine || 0;
+  const markPaidFineNum = fineInput === "" ? 0 : Math.max(0, parseInt(fineInput, 10) || 0);
+  const markPaidWaived = Math.max(0, markPaidDefaultFine - markPaidFineNum);
+  const markPaidTotal = (selectedRow?.baseRent || 0) + markPaidFineNum;
 
   const filteredRows = rows?.filter((r) => {
     if (activeTab === "all") return true;
@@ -244,11 +342,36 @@ export default function FeesPage() {
               ) : (
                 filteredRows?.map((row) => (
                   <TableRow key={row.tenantId} className="border-border hover:bg-muted/30">
-                    <TableCell className="font-medium">{row.tenantName}</TableCell>
-                    <TableCell>{row.roomNo}</TableCell>
+                    <TableCell className="font-medium">
+                      <div>
+                        {row.tenantName}
+                        {row.dueDay !== 10 && (
+                          <span className="text-[11px] text-muted-foreground ml-1.5 font-normal">
+                            (Due {row.dueDay}th)
+                          </span>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell>{row.roomNo || "-"}</TableCell>
                     <TableCell>₹{row.baseRent.toLocaleString("en-IN")}</TableCell>
-                    <TableCell className={row.fine > 0 ? "text-amber-500 font-medium" : "text-muted-foreground"}>
-                      {row.fine > 0 ? `+₹${row.fine.toLocaleString("en-IN")}` : "-"}
+                    <TableCell>
+                      <div className="flex items-center gap-8">
+                        {row.fine > 0 ? (
+                          <span className="text-amber-400 font-medium">+₹{row.fine.toLocaleString("en-IN")}</span>
+                        ) : (
+                          <span className="text-muted-foreground">-</span>
+                        )}
+                        {row.status !== "Paid" && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-6 px-2 text-[11px] text-muted-foreground hover:text-foreground border-border/60"
+                            onClick={() => handleOpenAdjustFine(row)}
+                          >
+                            Adjust Fine
+                          </Button>
+                        )}
+                      </div>
                     </TableCell>
                     <TableCell className="font-bold">₹{row.totalAmount.toLocaleString("en-IN")}</TableCell>
                     <TableCell>
@@ -259,13 +382,15 @@ export default function FeesPage() {
                         <Button
                           variant="default"
                           size="sm"
-                          onClick={() => setSelectedRow(row)}
+                          className="h-8"
+                          onClick={() => handleOpenMarkPaid(row)}
                         >
                           Mark Paid
                         </Button>
                       ) : (
                         <span className="text-xs text-muted-foreground flex items-center justify-end gap-1">
-                          Paid on {row.payment?.paidOn ? format(row.payment.paidOn, "dd MMM") : row.payment?.paidAt ? format(row.payment.paidAt, "dd MMM") : "Unknown"}
+                          Paid on {row.payment?.paidOn ? format(row.payment.paidOn, "dd MMM") : row.payment?.paidAt ? format(row.payment.paidAt, "dd MMM") : "Recorded"}
+                          {row.payment?.mode && ` via ${row.payment.mode.toUpperCase()}`}
                         </span>
                       )}
                     </TableCell>
@@ -277,30 +402,211 @@ export default function FeesPage() {
         </div>
       </Card>
 
-      <Dialog open={!!selectedRow} onOpenChange={(open) => !open && setSelectedRow(null)}>
-        <DialogContent className="bg-card border-border sm:max-w-[425px]">
+      {/* Dialog to Adjust Fine */}
+      <Dialog open={!!adjustingRow} onOpenChange={(open) => !open && setAdjustingRow(null)}>
+        <DialogContent className="bg-card border-border sm:max-w-[420px]">
           <DialogHeader>
-            <DialogTitle>Confirm Payment</DialogTitle>
+            <DialogTitle>Adjust Late Fine</DialogTitle>
             <DialogDescription>
-              Mark the fee as fully paid for {selectedRow?.tenantName}?
+              Set or adjust fine for <span className="font-medium text-foreground">{adjustingRow?.tenantName}</span> (Fee due on {adjustingRow?.dueDay || 10}th of each month)
             </DialogDescription>
           </DialogHeader>
-          <div className="py-4 space-y-3">
-            <div className="flex justify-between items-center text-sm">
-              <span className="text-muted-foreground">Base Rent:</span>
-              <span className="font-medium">₹{selectedRow?.baseRent.toLocaleString("en-IN")}</span>
+
+          <div className="py-2 space-y-4">
+            <div className="flex justify-between items-center text-sm py-2 px-3 rounded-lg bg-muted/30 border border-border">
+              <span className="text-muted-foreground">Monthly Base Rent:</span>
+              <span className="font-semibold text-foreground">₹{adjustingRow?.baseRent.toLocaleString("en-IN")}</span>
             </div>
-            {selectedRow && selectedRow.fine > 0 && (
-              <div className="flex justify-between items-center text-sm">
-                <span className="text-muted-foreground">Late Fine:</span>
-                <span className="font-medium text-amber-500">+₹{selectedRow.fine.toLocaleString("en-IN")}</span>
+
+            <div className="space-y-3 p-3.5 rounded-lg bg-muted/20 border border-border">
+              <div className="space-y-1.5">
+                <Label htmlFor="custom-fine-input" className="text-sm font-medium">
+                  Fine Amount to Charge (₹)
+                </Label>
+                <Input
+                  id="custom-fine-input"
+                  type="number"
+                  min={0}
+                  value={customFineAmount}
+                  onChange={(e) => setCustomFineAmount(e.target.value)}
+                  className="font-semibold"
+                  placeholder="0"
+                />
               </div>
-            )}
-            <div className="flex justify-between items-center pt-3 border-t border-border">
-              <span className="font-medium">Total Amount:</span>
-              <span className="font-bold text-xl text-primary">₹{selectedRow?.totalAmount.toLocaleString("en-IN")}</span>
+
+              {/* Grey one below the other: default and waive */}
+              <div className="space-y-1.5 pt-2 text-xs text-muted-foreground border-t border-border/50">
+                <div className="flex items-center justify-between">
+                  <span>default :</span>
+                  <button
+                    type="button"
+                    onClick={() => setCustomFineAmount(adjustDefaultFine.toString())}
+                    className="font-medium text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                    title="Click to apply default fine"
+                  >
+                    ₹{adjustDefaultFine.toLocaleString("en-IN")}
+                  </button>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span>waive :</span>
+                  <button
+                    type="button"
+                    onClick={() => setCustomFineAmount("0")}
+                    className="font-medium text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                    title="Click to waive fine to ₹0"
+                  >
+                    ₹{adjustWaived.toLocaleString("en-IN")}
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div className="rounded-lg bg-muted/40 p-3 border border-border space-y-1">
+              <div className="flex justify-between items-center text-xs text-muted-foreground">
+                <span>Base Rent + Fine:</span>
+                <span>₹{adjustingRow?.baseRent.toLocaleString("en-IN")} + ₹{adjustFineNum.toLocaleString("en-IN")}</span>
+              </div>
+              <div className="flex justify-between items-center pt-2 border-t border-border">
+                <span className="font-semibold text-sm">Updated Total:</span>
+                <span className="font-bold text-xl text-primary">
+                  ₹{adjustTotal.toLocaleString("en-IN")}
+                </span>
+              </div>
             </div>
           </div>
+
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" onClick={() => setAdjustingRow(null)}>
+              Cancel
+            </Button>
+            <Button onClick={handleSaveAdjustFine} disabled={isSavingFine}>
+              {isSavingFine ? "Saving..." : "Save Fine"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog to Mark Paid */}
+      <Dialog open={!!selectedRow} onOpenChange={(open) => !open && setSelectedRow(null)}>
+        <DialogContent className="bg-card border-border sm:max-w-[440px]">
+          <DialogHeader>
+            <DialogTitle>Mark Payment as Paid</DialogTitle>
+            <DialogDescription>
+              Record fee collection for <span className="font-medium text-foreground">{selectedRow?.tenantName}</span> (Room {selectedRow?.roomNo || "-"})
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="py-2 space-y-4">
+            {/* Base Rent */}
+            <div className="flex justify-between items-center text-sm py-2 px-3 rounded-lg bg-muted/30 border border-border">
+              <span className="text-muted-foreground">Monthly Base Rent:</span>
+              <span className="font-semibold text-foreground">₹{selectedRow?.baseRent.toLocaleString("en-IN")}</span>
+            </div>
+
+            {/* Editable Fine Section */}
+            <div className="space-y-3 p-3.5 rounded-lg bg-muted/20 border border-border">
+              <div className="space-y-1.5">
+                <Label htmlFor="fine-input" className="text-sm font-medium">
+                  Late Fine (₹)
+                </Label>
+                <Input
+                  id="fine-input"
+                  type="number"
+                  min={0}
+                  value={fineInput}
+                  onChange={(e) => setFineInput(e.target.value)}
+                  className="font-semibold"
+                  placeholder="0"
+                />
+              </div>
+
+              {/* Grey one below the other: default and waive */}
+              <div className="space-y-1.5 pt-2 text-xs text-muted-foreground border-t border-border/50">
+                <div className="flex items-center justify-between">
+                  <span>default :</span>
+                  <button
+                    type="button"
+                    onClick={() => setFineInput(markPaidDefaultFine.toString())}
+                    className="font-medium text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                    title="Click to apply default fine"
+                  >
+                    ₹{markPaidDefaultFine.toLocaleString("en-IN")}
+                  </button>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span>waive :</span>
+                  <button
+                    type="button"
+                    onClick={() => setFineInput("0")}
+                    className="font-medium text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                    title="Click to waive fine to ₹0"
+                  >
+                    ₹{markPaidWaived.toLocaleString("en-IN")}
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Paid Date */}
+            <div className="space-y-1.5">
+              <Label htmlFor="paid-date" className="text-sm font-medium">
+                Payment Date
+              </Label>
+              <Input
+                id="paid-date"
+                type="date"
+                value={paidDate}
+                max={format(now, "yyyy-MM-dd")}
+                onChange={(e) => {
+                  const newDate = e.target.value;
+                  setPaidDate(newDate);
+                  if (newDate) {
+                    const day = Number(newDate.split("-")[2]);
+                    if (day <= (selectedRow?.dueDay || 10) && markPaidFineNum > 0) {
+                      setFineInput("0");
+                    }
+                  }
+                }}
+              />
+              <p className="text-[11px] text-muted-foreground">
+                Set actual payment date if updating software retroactively.
+              </p>
+            </div>
+
+            {/* Payment Mode */}
+            <div className="space-y-1.5">
+              <Label className="text-sm font-medium">Payment Mode</Label>
+              <div className="grid grid-cols-3 gap-2">
+                {(["upi", "cash", "bank"] as const).map((mode) => (
+                  <Button
+                    key={mode}
+                    type="button"
+                    variant={paymentMode === mode ? "default" : "outline"}
+                    size="sm"
+                    className="capitalize text-xs h-8"
+                    onClick={() => setPaymentMode(mode)}
+                  >
+                    {mode === "upi" ? "UPI" : mode === "cash" ? "Cash" : "Bank Transfer"}
+                  </Button>
+                ))}
+              </div>
+            </div>
+
+            {/* Total Summary */}
+            <div className="rounded-lg bg-muted/40 p-3 border border-border space-y-1">
+              <div className="flex justify-between items-center text-xs text-muted-foreground">
+                <span>Base Rent + Fine:</span>
+                <span>₹{selectedRow?.baseRent.toLocaleString("en-IN")} + ₹{markPaidFineNum.toLocaleString("en-IN")}</span>
+              </div>
+              <div className="flex justify-between items-center pt-2 border-t border-border">
+                <span className="font-semibold text-sm">Total Collected:</span>
+                <span className="font-bold text-xl text-primary">
+                  ₹{markPaidTotal.toLocaleString("en-IN")}
+                </span>
+              </div>
+            </div>
+          </div>
+
           <DialogFooter className="gap-2 sm:gap-0">
             <Button variant="outline" onClick={() => setSelectedRow(null)}>
               Cancel
@@ -317,36 +623,16 @@ export default function FeesPage() {
 
 function FeeStatusBadge({ status }: { status: BillingRow["status"] }) {
   if (status === "Paid") {
-    return (
-      <Badge variant="outline" className="bg-transparent text-emerald-500 border-emerald-500/20 font-medium">
-        <CheckCircle2 className="w-3 h-3 mr-1" /> Paid
-      </Badge>
-    );
+    return <span className="text-emerald-400 font-medium">Paid</span>;
   }
   if (status === "Pending") {
-    return (
-      <Badge variant="outline" className="bg-transparent text-amber-500 border-amber-500/20 font-medium">
-        <Clock className="w-3 h-3 mr-1" /> Pending
-      </Badge>
-    );
+    return <span className="text-amber-400 font-medium">Pending</span>;
   }
   if (status === "Partial") {
-    return (
-      <Badge variant="outline" className="bg-transparent text-blue-500 border-blue-500/20 font-medium">
-        <Clock className="w-3 h-3 mr-1" /> Partial
-      </Badge>
-    );
+    return <span className="text-blue-400 font-medium">Partial</span>;
   }
   if (status === "Upcoming") {
-    return (
-      <Badge variant="outline" className="bg-transparent text-muted-foreground border-border font-medium">
-        Upcoming
-      </Badge>
-    );
+    return <span className="text-muted-foreground font-medium">Upcoming</span>;
   }
-  return (
-    <Badge variant="outline" className="bg-transparent text-rose-500 border-rose-500/20 font-medium">
-      <AlertTriangle className="w-3 h-3 mr-1" /> Overdue
-    </Badge>
-  );
+  return <span className="text-rose-400 font-medium">Overdue</span>;
 }

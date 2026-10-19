@@ -19,7 +19,7 @@ describe('Payment Logic', () => {
     });
 
     it('returns Pending for current month before 10th', () => {
-      expect(calculatePaymentStatus(mockStay, "2026-10", [])).toBe("Pending");
+      expect(calculatePaymentStatus(mockStay, "2026-10", [], new Date("2026-10-05"))).toBe("Pending");
     });
 
     it('returns Overdue for past months with no payment', () => {
@@ -60,6 +60,15 @@ describe('Payment Logic', () => {
       const current = new Date("2026-05-20");
       const vacate = new Date("2026-05-13");
       expect(calculateFine("2026-05", current, vacate)).toBe(300);
+    });
+
+    it('handles custom dueDay (e.g. 18th) dynamically', () => {
+      // On 18th -> 0 fine
+      expect(calculateFine("2026-05", new Date("2026-05-18"), null, 18)).toBe(0);
+      // On 19th -> 100 fine
+      expect(calculateFine("2026-05", new Date("2026-05-19"), null, 18)).toBe(100);
+      // On 22nd -> 400 fine
+      expect(calculateFine("2026-05", new Date("2026-05-22"), null, 18)).toBe(400);
     });
   });
 });

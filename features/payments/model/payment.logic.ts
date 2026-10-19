@@ -5,7 +5,13 @@ import { Payment } from "./payment.schema";
 /**
  * Calculates the payment status for a given stay and month.
  */
-export function calculatePaymentStatus(stay: Stay, month: string /* YYYY-MM */, payments: Payment[]): "Paid" | "Pending" | "Overdue" | "Partial" | "Upcoming" | "N/A" {
+export function calculatePaymentStatus(
+  stay: Stay, 
+  month: string /* YYYY-MM */, 
+  payments: Payment[], 
+  currentDate: Date = new Date(),
+  dueDay: number = 10
+): "Paid" | "Pending" | "Overdue" | "Partial" | "Upcoming" | "N/A" {
   const [year, monthNum] = month.split("-").map(Number);
   const monthStart = new Date(year, monthNum - 1, 1);
   const monthEnd = new Date(year, monthNum, 0);
@@ -29,11 +35,12 @@ export function calculatePaymentStatus(stay: Stay, month: string /* YYYY-MM */, 
     if (s === "pending") return "Pending";
   }
 
-  const today = new Date();
-  const billing10th = new Date(year, monthNum - 1, 10, 23, 59, 59);
+  const effectiveDueDay = stay.dueDay || dueDay || 10;
+  const today = currentDate;
+  const billingDueDate = new Date(year, monthNum - 1, effectiveDueDay, 23, 59, 59);
 
-  if (isAfter(today, billing10th)) {
-    if (stay.vacateDate && isBefore(stay.vacateDate, billing10th)) {
+  if (isAfter(today, billingDueDate)) {
+    if (stay.vacateDate && isBefore(stay.vacateDate, billingDueDate)) {
       return "Pending"; 
     }
     return "Overdue";
@@ -48,12 +55,17 @@ export function calculatePaymentStatus(stay: Stay, month: string /* YYYY-MM */, 
 }
 
 /**
- * Calculates fine based on ₹100/day after the 10th of the month.
+ * Calculates fine based on ₹100/day after the due day of the month (default 10th).
  * Stops accruing if vacated.
  */
-export function calculateFine(month: string /* YYYY-MM */, currentDate: Date = new Date(), vacateDate?: Date | null): number {
+export function calculateFine(
+  month: string /* YYYY-MM */, 
+  currentDate: Date = new Date(), 
+  vacateDate?: Date | null,
+  dueDay: number = 10
+): number {
   const [year, monthNum] = month.split("-").map(Number);
-  const dueDate = new Date(year, monthNum - 1, 10);
+  const dueDate = new Date(year, monthNum - 1, dueDay || 10);
   let endDate = currentDate;
   
   if (vacateDate && isBefore(vacateDate, currentDate)) {

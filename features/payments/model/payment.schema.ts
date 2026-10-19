@@ -15,6 +15,8 @@ export const PaymentSchema = z.object({
   amount: z.number().optional(), // Kept for backwards compat
   rent: z.number().default(0),
   fine: z.number().default(0),
+  fineWaived: z.boolean().optional(),
+  waiveReason: z.string().optional(),
   amountPaid: z.number().default(0),
   status: PaymentStatusEnum.default("Pending"),
   paidOn: z.date().nullable().optional(),

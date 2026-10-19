@@ -122,6 +122,7 @@ function PaymentDetailsDrawer({ open, onOpenChange, monthData, stay }: { open: b
   const [markPaidMode, setMarkPaidMode] = useState(false);
   
   // Mark Paid form state
+  const [fineInput, setFineInput] = useState<number>(0);
   const [amountPaid, setAmountPaid] = useState("");
   const [paymentMode, setPaymentMode] = useState<"cash"|"upi"|"bank">("upi");
   const [receiptNo, setReceiptNo] = useState("");
@@ -129,13 +130,13 @@ function PaymentDetailsDrawer({ open, onOpenChange, monthData, stay }: { open: b
   if (!monthData) return null;
 
   const currentFine = calculateFine(monthData.monthKey, new Date(), stay.vacateDate);
-  const expectedTotal = stay.monthlyRent + currentFine;
+  const effectiveFine = monthData.payment?.fine !== undefined ? monthData.payment.fine : currentFine;
+  const expectedTotal = stay.monthlyRent + effectiveFine;
   
   const handleMarkPaid = async () => {
     setLoading(true);
     try {
-      // In a real app, this should call paymentsApi.markPaid or a server action
-      // We will use legacy firestoreService for now as a stub
+      const numFine = Math.max(0, Number(fineInput) || 0);
       const payData: Partial<Payment> = {
         stayId: stay.id,
         tenantId: stay.tenantId,
@@ -144,9 +145,10 @@ function PaymentDetailsDrawer({ open, onOpenChange, monthData, stay }: { open: b
         monthKey: monthData.monthKey,
         month: monthData.monthKey,
         rent: stay.monthlyRent,
-        fine: currentFine,
-        amountPaid: Number(amountPaid) || expectedTotal,
-        amount: Number(amountPaid) || expectedTotal,
+        fine: numFine,
+        fineWaived: numFine === 0 && currentFine > 0,
+        amountPaid: Number(amountPaid) || (stay.monthlyRent + numFine),
+        amount: Number(amountPaid) || (stay.monthlyRent + numFine),
         status: "Paid",
         mode: paymentMode,
         receiptNo,
@@ -155,7 +157,7 @@ function PaymentDetailsDrawer({ open, onOpenChange, monthData, stay }: { open: b
       };
       
       await paymentsApi.markPaid(payData);
-      toast.success(`Payment marked as paid for ${monthData.name}`);
+      toast.success(`Payment marked as paid for ${monthData.name}${numFine === 0 && currentFine > 0 ? " (Fine waived)" : ""}`);
       setMarkPaidMode(false);
       onOpenChange(false);
     } catch (e) {
@@ -242,6 +244,7 @@ function PaymentDetailsDrawer({ open, onOpenChange, monthData, stay }: { open: b
 
           {!markPaidMode && monthData.status !== "Paid" && (
             <Button className="w-full" size="lg" onClick={() => {
+              setFineInput(effectiveFine);
               setAmountPaid(expectedTotal.toString());
               setMarkPaidMode(true);
             }}>
@@ -252,7 +255,49 @@ function PaymentDetailsDrawer({ open, onOpenChange, monthData, stay }: { open: b
           {markPaidMode && (
             <div className="space-y-4 pt-4 border-t border-border animate-in fade-in slide-in-from-top-4">
               <div className="space-y-2">
-                <Label>Amount Paid (₹)</Label>
+                <div className="flex items-center justify-between">
+                  <Label>Late Fine (₹)</Label>
+                  {fineInput > 0 ? (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 px-1.5 text-xs text-amber-400 hover:text-amber-300"
+                      onClick={() => {
+                        setFineInput(0);
+                        setAmountPaid(stay.monthlyRent.toString());
+                      }}
+                    >
+                      Remove Fine (₹0)
+                    </Button>
+                  ) : effectiveFine > 0 ? (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 px-1.5 text-xs text-primary hover:text-primary/80"
+                      onClick={() => {
+                        setFineInput(effectiveFine);
+                        setAmountPaid((stay.monthlyRent + effectiveFine).toString());
+                      }}
+                    >
+                      Restore (+₹{effectiveFine})
+                    </Button>
+                  ) : null}
+                </div>
+                <Input
+                  type="number"
+                  min={0}
+                  value={fineInput}
+                  onChange={(e) => {
+                    const f = Math.max(0, Number(e.target.value) || 0);
+                    setFineInput(f);
+                    setAmountPaid((stay.monthlyRent + f).toString());
+                  }}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Total Amount Paid (₹)</Label>
                 <Input type="number" value={amountPaid} onChange={(e) => setAmountPaid(e.target.value)} />
               </div>
               <div className="space-y-2">

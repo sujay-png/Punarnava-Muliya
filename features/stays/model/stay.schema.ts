@@ -13,6 +13,7 @@ export const StaySchema = z.object({
   expectedVacateDate: z.date().nullable().optional(),
   vacateDate: z.date().nullable().optional(),
   monthlyRent: z.number().min(0),
+  dueDay: z.number().min(1).max(28).nullable().optional(),
   status: StayStatusEnum.default("Active"),
   vacateNotes: z.string().optional(),
   createdAt: z.date().optional(),
