@@ -13,7 +13,7 @@ If you are an AI assistant or a developer contributing to this project, **you mu
 - **Frontend**: Next.js 16 (App Router), React, Tailwind CSS, Shadcn UI
 - **Backend/Database**: Firebase (Firestore, Auth, Storage)
 - **State Management**: React Query (live onSnapshot listeners), Zustand
-- **Integrations**: MSG91 (via Firebase Cloud Functions)
+- **Integrations**: Meta WhatsApp Cloud API (via Firebase Cloud Functions)
 
 ## Getting Started
 

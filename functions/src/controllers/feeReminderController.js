@@ -10,7 +10,7 @@
  */
 const { onSchedule } = require("firebase-functions/v2/scheduler");
 const { logger } = require("firebase-functions");
-const msg91 = require("../services/msg91Service");
+const whatsapp = require("../services/whatsappService");
 const repo = require("../services/tenantRepository");
 const { todayInIST, monthLabel } = require("../utils/dateUtils");
 const {
@@ -79,7 +79,7 @@ async function runReminderCycle(day, monthKey, date) {
   for (const tenant of unpaid) {
     if (await repo.wasReminderSent(tenant.id, monthKey, day)) { skipped++; continue; }
     try {
-      await msg91.sendTemplate(
+      await whatsapp.sendTemplate(
         templateName,
         `91${String(tenant.phone).replace(/\D/g, "").slice(-10)}`,
         buildComponents(tenant, { date, earlyBird })
@@ -104,7 +104,6 @@ exports.sendFeeReminders = onSchedule(
     retryCount: 3,
     memory: "256MiB",
     timeoutSeconds: 300,
-    secrets: ["MSG91_AUTH_KEY"],
   },
   async () => {
     const { day, monthKey, date } = todayInIST();
@@ -123,7 +122,6 @@ exports.retryFailedReminders = onSchedule(
     timeZone: TIMEZONE,
     region: "asia-south1",
     memory: "256MiB",
-    secrets: ["MSG91_AUTH_KEY"],
   },
   async () => {
     const { day, monthKey, date } = todayInIST();
@@ -142,7 +140,7 @@ exports.retryFailedReminders = onSchedule(
       const tenant = await repo.getTenantById(f.tenantId);
       if (!tenant || !tenant.phone) continue;
       try {
-        await msg91.sendTemplate(
+        await whatsapp.sendTemplate(
           templateName,
           `91${String(tenant.phone).replace(/\D/g, "").slice(-10)}`,
           buildComponents(tenant, { date, earlyBird })

@@ -83,7 +83,7 @@ export default function NoticesPage() {
             <DialogHeader>
               <DialogTitle>Send Notice Broadcast</DialogTitle>
               <DialogDescription>
-                This will instantly send a WhatsApp message to all active tenants using the MSG91 template.
+                This will instantly send a WhatsApp message to all active tenants via WhatsApp.
               </DialogDescription>
             </DialogHeader>
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 mt-4">

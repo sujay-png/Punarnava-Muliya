@@ -34,7 +34,7 @@ The system separates a person's **Identity** from their **Rental Stay**. If a te
 4. **`payments` (Monthly Rent)**: `tenantId`, `amount`, `monthKey` (e.g. `2026-10`), `status` (`paid`). **Doc ID is strictly `${tenantId}_${monthKey}`**. Fines are baked into the final `amount` saved here.
 5. **`statusHistory`**: Audit log of when a stay changed status (e.g., when they gave notice).
 6. **`maintenance`**: `title`, `roomNo`, `tenantName`, `category`, `status`, `createdAt`.
-7. **`notices`**: `title`, `message`, `broadcastStatus` (used by Cloud Functions to trigger MSG91 WhatsApp).
+7. **`notices`**: `title`, `message`, `broadcastStatus` (used by Cloud Functions to trigger WhatsApp broadcast).
 
 ## 4. Key Workflows & Business Rules
 - **Atomic Operations**: Any action that affects multiple documents (e.g., Registering a Tenant creates a Tenant + Stay + Deposit; Vacating a Tenant updates Stay + Deposit + StatusHistory) **MUST** use Firestore `writeBatch` or `runTransaction` in the `/api` layer.

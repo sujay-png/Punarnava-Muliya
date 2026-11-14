@@ -7,7 +7,7 @@ trigger: always_on
 ## Context
 PG (Paying Guest) management app for an Indian PG owner.
 Stack: Next.js App Router + TypeScript, Firebase Auth/Firestore/Storage,
-Cloud Functions (MSG91 WhatsApp). Currency ₹, timezone Asia/Kolkata,
+Cloud Functions (Meta WhatsApp Cloud API). Currency ₹, timezone Asia/Kolkata,
 date format DD MMM YYYY.
 
 Full feature spec and phased plan: `docs/PROMPT.md`. Read it before
@@ -58,7 +58,7 @@ until I approve.
 ## Safety
 - Never run the migration script without `--dry-run` first, and never
   auto-run it. Ask me before any command that writes to Firestore.
-- Don't touch the MSG91 Cloud Function unless required.
+- Don't touch the WhatsApp Cloud Function unless required.
 - No secrets in code. Don't refactor unrelated code. Keep diffs focused.
 - After each phase: list files changed, manual test steps, new
   indexes/rules. Then stop and wait for approval.

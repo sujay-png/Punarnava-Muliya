@@ -1,13 +1,11 @@
 /**
  * Notice board broadcast.
- * The Flutter app just writes a document to `notices/` — this trigger picks it
- * up and fans the message out to every active tenant on WhatsApp. The app never
- * talks to MSG91 directly, so the auth key never ships inside the APK.
+ * Writes to `notices/` trigger this function to fan the message out to every active tenant on WhatsApp.
  */
 const { onDocumentCreated } = require("firebase-functions/v2/firestore");
 const { getFirestore, FieldValue } = require("firebase-admin/firestore");
 const { logger } = require("firebase-functions");
-const msg91 = require("../services/msg91Service");
+const whatsapp = require("../services/whatsappService");
 const repo = require("../services/tenantRepository");
 const { COLLECTIONS } = require("../config/constants");
 
@@ -16,7 +14,6 @@ exports.onNoticeCreated = onDocumentCreated(
     document: `${COLLECTIONS.NOTICES}/{noticeId}`,
     region: "asia-south1",
     memory: "256MiB",
-    secrets: ["MSG91_AUTH_KEY"],
   },
   async (event) => {
     const notice = event.data.data();
@@ -37,7 +34,7 @@ exports.onNoticeCreated = onDocumentCreated(
 
     let status = "sent", error = null;
     try {
-      await msg91.sendBulkTemplate(process.env.TEMPLATE_NOTICE, recipients);
+      await whatsapp.sendBulkTemplate(process.env.TEMPLATE_NOTICE, recipients);
       logger.info(`Notice ${noticeId} broadcast to ${recipients.length} tenants`);
     } catch (err) {
       status = "failed"; error = err.message;

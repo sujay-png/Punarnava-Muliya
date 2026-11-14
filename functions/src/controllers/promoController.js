@@ -5,11 +5,11 @@
  */
 const { onCall, HttpsError } = require("firebase-functions/v2/https");
 const { logger } = require("firebase-functions");
-const msg91 = require("../services/msg91Service");
+const whatsapp = require("../services/whatsappService");
 const repo = require("../services/tenantRepository");
 
 exports.sendProductPromo = onCall(
-  { region: "asia-south1", memory: "256MiB", secrets: ["MSG91_AUTH_KEY"] },
+  { region: "asia-south1", memory: "256MiB" },
   async (request) => {
     if (!request.auth) {
       throw new HttpsError("unauthenticated", "Sign in required.");
@@ -35,7 +35,7 @@ exports.sendProductPromo = onCall(
       }));
 
     try {
-      await msg91.sendBulkTemplate(process.env.TEMPLATE_PRODUCT_PROMO, recipients);
+      await whatsapp.sendBulkTemplate(process.env.TEMPLATE_PRODUCT_PROMO, recipients);
       logger.info(`Promo "${productName}" sent to ${recipients.length} tenants`);
       return { success: true, sentTo: recipients.length };
     } catch (err) {
