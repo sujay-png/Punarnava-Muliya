@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "Cloud Functions for PGMaster - WhatsApp fee reminders, notices & promotions via Meta WhatsApp Cloud API",
   "main": "index.js",
-  "engines": { "node": "20" },
+  "engines": { "node": "22" },
   "scripts": {
     "serve": "firebase emulators:start --only functions",
     "deploy": "firebase deploy --only functions",
