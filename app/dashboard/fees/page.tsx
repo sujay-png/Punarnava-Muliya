@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { format } from "date-fns";
-import { CheckCircle2, AlertTriangle, Clock, CalendarIcon } from "lucide-react";
+import { CheckCircle2, AlertTriangle, Clock, CalendarIcon, Pencil, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 
 import { tenantsApi } from "@/features/tenants";
@@ -63,6 +63,15 @@ export default function FeesPage() {
   const [adjustingRow, setAdjustingRow] = useState<BillingRow | null>(null);
   const [customFineAmount, setCustomFineAmount] = useState<string>("0");
   const [isSavingFine, setIsSavingFine] = useState(false);
+
+  // Edit Payment dialog state
+  const [editingRow, setEditingRow] = useState<BillingRow | null>(null);
+  const [editRentInput, setEditRentInput] = useState<string>("");
+  const [editFineInput, setEditFineInput] = useState<string>("0");
+  const [editPaidDate, setEditPaidDate] = useState<string>("");
+  const [editPaymentMode, setEditPaymentMode] = useState<"upi" | "cash" | "bank">("upi");
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
+  const [isMarkingUnpaid, setIsMarkingUnpaid] = useState(false);
 
   // Month Key: "YYYY-MM"
   const now = new Date();
@@ -229,6 +238,85 @@ export default function FeesPage() {
     }
   };
 
+  const handleOpenEditPayment = (row: BillingRow) => {
+    setEditingRow(row);
+    setEditRentInput((row.payment?.rent ?? row.baseRent).toString());
+    setEditFineInput((row.payment?.fine ?? row.fine ?? 0).toString());
+    const paidD = row.payment?.paidOn || row.payment?.paidAt;
+    setEditPaidDate(paidD ? format(paidD, "yyyy-MM-dd") : format(new Date(), "yyyy-MM-dd"));
+    setEditPaymentMode(row.payment?.mode || "upi");
+  };
+
+  const handleSaveEditPayment = async () => {
+    if (!editingRow) return;
+    setIsSavingEdit(true);
+    try {
+      const numRent = editRentInput === "" ? 0 : Math.max(0, parseInt(editRentInput, 10) || 0);
+      const numFine = editFineInput === "" ? 0 : Math.max(0, parseInt(editFineInput, 10) || 0);
+      const totalAmount = numRent + numFine;
+
+      let paidDateTime = new Date();
+      if (editPaidDate) {
+        const [year, month, day] = editPaidDate.split("-").map(Number);
+        paidDateTime = new Date(year, month - 1, day, 12, 0, 0);
+      }
+
+      const paymentDocId = editingRow.payment?.id || `${editingRow.tenantId}_${currentMonthKey}`;
+
+      const paymentData: Partial<Payment> = {
+        id: paymentDocId,
+        tenantId: editingRow.tenantId,
+        tenantName: editingRow.tenantName,
+        roomNo: editingRow.roomNo,
+        monthKey: currentMonthKey,
+        month: currentMonthKey,
+        rent: numRent,
+        fine: numFine,
+        fineWaived: numFine === 0,
+        amountPaid: totalAmount,
+        amount: totalAmount,
+        mode: editPaymentMode,
+        paidOn: paidDateTime,
+        paidAt: paidDateTime,
+        status: "Paid",
+      };
+
+      await paymentsApi.markPaid(paymentData);
+      toast.success(`Updated payment of ₹${totalAmount.toLocaleString("en-IN")} for ${editingRow.tenantName}`);
+      setEditingRow(null);
+    } catch {
+      toast.error("Failed to update payment");
+    } finally {
+      setIsSavingEdit(false);
+    }
+  };
+
+  const handleMarkUnpaidFromEdit = async () => {
+    if (!editingRow) return;
+    const paymentDocId = editingRow.payment?.id || `${editingRow.tenantId}_${currentMonthKey}`;
+    setIsMarkingUnpaid(true);
+    try {
+      await paymentsApi.markUnpaid(paymentDocId);
+      toast.success(`Marked ${editingRow.tenantName} as Unpaid`);
+      setEditingRow(null);
+    } catch {
+      toast.error("Failed to mark as unpaid");
+    } finally {
+      setIsMarkingUnpaid(false);
+    }
+  };
+
+  // Dynamic calculations for Edit Payment dialog
+  let editDateDefaultFine = 0;
+  if (editPaidDate && editingRow) {
+    const [year, month, day] = editPaidDate.split("-").map(Number);
+    const dateObj = new Date(year, month - 1, day, 12, 0, 0);
+    editDateDefaultFine = calculateFine(currentMonthKey, dateObj, null, editingRow.dueDay);
+  }
+  const editRentNum = editRentInput === "" ? 0 : Math.max(0, parseInt(editRentInput, 10) || 0);
+  const editFineNum = editFineInput === "" ? 0 : Math.max(0, parseInt(editFineInput, 10) || 0);
+  const editTotal = editRentNum + editFineNum;
+
   // Dynamic calculations for Adjust Fine dialog
   const adjustDefaultFine = adjustingRow?.autoCalculatedFine || 0;
   const adjustFineNum = customFineAmount === "" ? 0 : Math.max(0, parseInt(customFineAmount, 10) || 0);
@@ -317,7 +405,7 @@ export default function FeesPage() {
                 <TableHead className="font-semibold text-foreground">Fine</TableHead>
                 <TableHead className="font-semibold text-foreground">Total</TableHead>
                 <TableHead className="font-semibold text-foreground">Status</TableHead>
-                <TableHead className="text-right font-semibold text-foreground">Action</TableHead>
+                <TableHead className="text-right font-semibold text-foreground pr-15">Action</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -382,16 +470,27 @@ export default function FeesPage() {
                         <Button
                           variant="default"
                           size="sm"
-                          className="h-8"
+                          className="h-8 mr-8"
                           onClick={() => handleOpenMarkPaid(row)}
                         >
                           Mark Paid
                         </Button>
                       ) : (
-                        <span className="text-xs text-muted-foreground flex items-center justify-end gap-1">
-                          Paid on {row.payment?.paidOn ? format(row.payment.paidOn, "dd MMM") : row.payment?.paidAt ? format(row.payment.paidAt, "dd MMM") : "Recorded"}
-                          {row.payment?.mode && ` via ${row.payment.mode.toUpperCase()}`}
-                        </span>
+                        <div className="flex items-center justify-end gap-2">
+                          <span className="text-xs text-muted-foreground">
+                            Paid on {row.payment?.paidOn ? format(row.payment.paidOn, "dd MMM") : row.payment?.paidAt ? format(row.payment.paidAt, "dd MMM") : "Recorded"}
+                            {row.payment?.mode && ` via ${row.payment.mode.toUpperCase()}`}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => handleOpenEditPayment(row)}
+                            className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
+                            title="Edit payment"
+                            aria-label="Edit payment"
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
                       )}
                     </TableCell>
                   </TableRow>
@@ -614,6 +713,165 @@ export default function FeesPage() {
             <Button onClick={handleMarkPaid} disabled={isMarkingPaid}>
               {isMarkingPaid ? "Saving..." : "Confirm Payment"}
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog to Edit Existing Payment */}
+      <Dialog open={!!editingRow} onOpenChange={(open) => !open && setEditingRow(null)}>
+        <DialogContent className="bg-card border-border sm:max-w-[440px]">
+          <DialogHeader>
+            <DialogTitle>Edit Payment Record</DialogTitle>
+            <DialogDescription>
+              Update payment amount, fine, or date for <span className="font-medium text-foreground">{editingRow?.tenantName}</span> (Room {editingRow?.roomNo || "-"})
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="py-2 space-y-4">
+            {/* Base Rent Input */}
+            <div className="space-y-1.5">
+              <Label htmlFor="edit-rent-input" className="text-sm font-medium">
+                Monthly Rent (₹)
+              </Label>
+              <Input
+                id="edit-rent-input"
+                type="number"
+                min={0}
+                value={editRentInput}
+                onChange={(e) => setEditRentInput(e.target.value)}
+                className="font-semibold"
+                placeholder="0"
+              />
+            </div>
+
+            {/* Editable Fine Section */}
+            <div className="space-y-3 p-3.5 rounded-lg bg-muted/20 border border-border">
+              <div className="space-y-1.5">
+                <Label htmlFor="edit-fine-input" className="text-sm font-medium">
+                  Late Fine (₹)
+                </Label>
+                <Input
+                  id="edit-fine-input"
+                  type="number"
+                  min={0}
+                  value={editFineInput}
+                  onChange={(e) => setEditFineInput(e.target.value)}
+                  className="font-semibold"
+                  placeholder="0"
+                />
+              </div>
+
+              {/* Dynamic Fine calculations for date */}
+              <div className="space-y-1.5 pt-2 text-xs text-muted-foreground border-t border-border/50">
+                <div className="flex items-center justify-between">
+                  <span>default for this date :</span>
+                  <button
+                    type="button"
+                    onClick={() => setEditFineInput(editDateDefaultFine.toString())}
+                    className="font-medium text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                    title="Click to apply default fine for this date"
+                  >
+                    ₹{editDateDefaultFine.toLocaleString("en-IN")}
+                  </button>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span>waive fine :</span>
+                  <button
+                    type="button"
+                    onClick={() => setEditFineInput("0")}
+                    className="font-medium text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                    title="Click to waive fine to ₹0"
+                  >
+                    ₹0
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Paid Date */}
+            <div className="space-y-1.5">
+              <Label htmlFor="edit-paid-date" className="text-sm font-medium">
+                Payment Date
+              </Label>
+              <Input
+                id="edit-paid-date"
+                type="date"
+                value={editPaidDate}
+                max={format(now, "yyyy-MM-dd")}
+                onChange={(e) => {
+                  const newDate = e.target.value;
+                  setEditPaidDate(newDate);
+                  if (newDate && editingRow) {
+                    const [y, m, d] = newDate.split("-").map(Number);
+                    const newFine = calculateFine(currentMonthKey, new Date(y, m - 1, d, 12, 0, 0), null, editingRow.dueDay);
+                    // If fine was 0 and date moved past due date, auto-suggest the new fine
+                    if (Number(editFineInput) === 0 && newFine > 0) {
+                      setEditFineInput(newFine.toString());
+                    } else if (d <= editingRow.dueDay && Number(editFineInput) > 0) {
+                      setEditFineInput("0");
+                    }
+                  }
+                }}
+              />
+              <p className="text-[11px] text-muted-foreground">
+                Payment date determines whether late fine applies after the {editingRow?.dueDay || 10}th.
+              </p>
+            </div>
+
+            {/* Payment Mode */}
+            <div className="space-y-1.5">
+              <Label className="text-sm font-medium">Payment Mode</Label>
+              <div className="grid grid-cols-3 gap-2">
+                {(["upi", "cash", "bank"] as const).map((mode) => (
+                  <Button
+                    key={mode}
+                    type="button"
+                    variant={editPaymentMode === mode ? "default" : "outline"}
+                    size="sm"
+                    className="capitalize text-xs h-8"
+                    onClick={() => setEditPaymentMode(mode)}
+                  >
+                    {mode === "upi" ? "UPI" : mode === "cash" ? "Cash" : "Bank Transfer"}
+                  </Button>
+                ))}
+              </div>
+            </div>
+
+            {/* Total Summary */}
+            <div className="rounded-lg bg-muted/40 p-3 border border-border space-y-1">
+              <div className="flex justify-between items-center text-xs text-muted-foreground">
+                <span>Rent + Fine:</span>
+                <span>₹{editRentNum.toLocaleString("en-IN")} + ₹{editFineNum.toLocaleString("en-IN")}</span>
+              </div>
+              <div className="flex justify-between items-center pt-2 border-t border-border">
+                <span className="font-semibold text-sm">Updated Total:</span>
+                <span className="font-bold text-xl text-primary">
+                  ₹{editTotal.toLocaleString("en-IN")}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter className="flex flex-col-reverse sm:flex-row sm:justify-between items-center gap-2 sm:gap-0">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 text-xs w-full sm:w-auto"
+              disabled={isMarkingUnpaid || isSavingEdit}
+              onClick={handleMarkUnpaidFromEdit}
+            >
+              <RotateCcw className="h-3.5 w-3.5 mr-1" />
+              {isMarkingUnpaid ? "Reverting..." : "Mark as Unpaid"}
+            </Button>
+            <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+              <Button variant="outline" onClick={() => setEditingRow(null)}>
+                Cancel
+              </Button>
+              <Button onClick={handleSaveEditPayment} disabled={isSavingEdit || isMarkingUnpaid}>
+                {isSavingEdit ? "Saving..." : "Save Changes"}
+              </Button>
+            </div>
           </DialogFooter>
         </DialogContent>
       </Dialog>
